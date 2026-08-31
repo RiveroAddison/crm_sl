@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Ventas Offline - Profit Plus ERP</title>
+  
+  <!-- Manifest para PWA (Instalable en teléfonos Android/iOS) -->
+  <link rel="manifest" href="data:application/manifest+json;utf8,{%22name%22:%22App%20Ventas%20Profit%22,%22short_name%22:%22VentasPWA%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22#4f46e5%22,%22theme_color%22:%22#4f46e5%22}">
+  
+  <!-- Tailwind CSS para el diseño -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para renderizar el histograma interactivo en el Canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Iconos Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .status-pulse {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen pb-12 select-none">
+
+  <!-- Toast de Notificaciones -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-full shadow-xl transition-all duration-300 opacity-0 pointer-events-none flex items-center gap-2 border border-slate-700">
+    <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+    <span id="toast-message">Notificación</span>
+  </div>
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl flex flex-col">
+    
+    <!-- ENCABEZADO Y BARRA DE ESTADO PROFIT PLUS / SQLITE -->
+    <header class="bg-indigo-700 text-white p-4 sticky top-0 z-30 shadow-md">
+      <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-indigo-600/80 rounded-xl border border-indigo-400/30">
+            <i data-lucide="database" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-base leading-tight">Ventas PWA + SQLite</h1>
+            <p class="text-[10px] text-indigo-200">Sincronizado con Profit Plus (MSSQL)</p>
+          </div>
+        </div>
+
+        <!-- Botón de Sincronización Manual con Profit -->
+        <button onclick="sincronizarConProfit()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition active:scale-95 shadow border border-indigo-500">
+          <i data-lucide="refresh-cw" id="sync-icon" class="w-3.5 h-3.5"></i>
+          <span>Sincronizar</span>
+        </button>
+      </div>
+
+      <!-- Estado de Red y Almacenamiento SQLite Local -->
+      <div class="flex justify-between items-center bg-indigo-900/60 rounded-lg p-2 text-xs border border-indigo-500/30">
+        <div class="flex items-center gap-2">
+          <span id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-400 status-pulse"></span>
+          <span id="status-text" class="font-medium text-emerald-200">En línea (Profit OK)</span>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] text-indigo-200">
+          <span>En SQLite:</span>
+          <span id="pending-count" class="bg-indigo-950 px-2 py-0.5 rounded font-bold font-mono text-white">0</span>
+          <!-- Interruptor de Simulación Offline -->
+          <button onclick="toggleOfflineSim()" id="toggle-net-btn" class="ml-1 bg-slate-800 hover:bg-slate-700 text-white text-[10px] px-2 py-0.5 rounded border border-slate-600 transition">
+            Simular Offline
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-4 space-y-4 overflow-y-auto">
+
+      <!-- TARJETA DE PLANIFICACIÓN DE RUTAS DE PROFIT -->
+      <section class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <h2 class="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-4 h-4 text-indigo-600"></i>
+            Planificación de Rutas
+          </h2>
+          <span class="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-100">
+            Profit Plus ERP
+          </span>
+        </div>
+
+        <!-- Filtros por Semana y Día -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-500 mb-1">Semana del Año</label>
+            <select id="select-semana" onchange="actualizarDias()" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+              <option value="sem31">Semana 31 (Actual)</option>
+              <option value="sem32">Semana 32 (Próxima)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-500 mb-1">Día de Visita</label>
+            <select id="select-dia" onchange="renderClientesDesdeSQLite()" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+              <!-- Carga dinámicamente -->
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- LISTA DE CLIENTES DESDE BASE DE DATOS LOCAL -->
+      <section class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            Clientes en SQLite Local (<span id="cant-clientes">0</span>)
+          </h3>
+          <span class="text-[10px] text-slate-400">Toca para ver detalle</span>
+        </div>
+
+        <div id="lista-clientes" class="space-y-2">
+          <!-- Tarjetas generadas dinámicamente -->
+        </div>
+      </section>
+
+      <!-- TARJETA DETALLE CON HISTOGRAMA CANVAS E INTERACCIÓN POR MESES -->
+      <section id="detalle-cliente" class="hidden bg-white border-2 border-indigo-500/20 rounded-xl p-4 shadow-xl space-y-4">
+        <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+          <div>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Cliente Profit Plus</span>
+            <h3 id="cliente-nombre" class="font-bold text-slate-800 text-base mt-1">--</h3>
+            <p id="cliente-codigo" class="text-xs text-slate-400 font-mono">co_cli: --</p>
+          </div>
+          <button onclick="cerrarDetalle()" class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Canvas interactivo de Chart.js -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-600"></i>
+              Histórico Facturado (Últimos 6 Meses)
+            </h4>
+          </div>
+          <p class="text-[11px] text-indigo-600 font-medium mb-2 flex items-center gap-1">
+            <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i>
+            Haz clic en una barra del canvas para ver semanas
+          </p>
+
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <!-- CANVAS UTILIZADO PARA EL HISTOGRAMA -->
+            <canvas id="comprasChart" class="w-full max-h-48 cursor-pointer"></canvas>
+          </div>
+        </div>
+
+        <!-- TABLA DE DESGLOSE SEMANAL DEL MES SELECCIONADO EN EL CANVAS -->
+        <div id="seccion-tabla-semanal" class="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-2">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+            <div>
+              <h5 id="tabla-mes-titulo" class="text-xs font-bold text-slate-800">Desglose Semanal - Mes</h5>
+              <p id="tabla-mes-sub" class="text-[10px] text-slate-500">Unidades facturadas por semana</p>
+            </div>
+            <span id="badge-total-mes" class="text-xs font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Total: 0 unid.</span>
+          </div>
+
+          <!-- Contenedor de la tabla -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-200 text-slate-700 text-[10px] font-bold">
+                  <th class="p-1.5 rounded-l">Semana / Fecha</th>
+                  <th class="p-1.5">N° Factura</th>
+                  <th class="p-1.5 text-center">Cant.</th>
+                  <th class="p-1.5 text-right rounded-r">Monto</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-semanal-body" class="text-[11px]">
+                <!-- Generado al presionar la barra del canvas -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Módulo de Captura de GPS -->
+        <div class="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-indigo-900 flex items-center gap-1">
+              <i data-lucide="map-pin" class="w-4 h-4 text-indigo-600"></i>
+              Captura Coordenadas GPS
+            </span>
+            <span id="gps-status-badge" class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono">Sin Fijar</span>
+          </div>
+          
+          <div id="gps-display" class="bg-white p-2 rounded border border-indigo-100 text-center font-mono text-xs text-slate-600">
+            Lat: -- | Lng: --
+          </div>
+
+          <button onclick="capturarGPS()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2 rounded-lg transition shadow-sm flex items-center justify-center gap-2">
+            <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+            <span>Obtener Ubicación Actual</span>
+          </button>
+        </div>
+
+        <!-- Guardar Registro Local en SQLite -->
+        <button onclick="guardarRegistroLocal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span>Registrar Visita en SQLite (Offline)</span>
+        </button>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // SIMULACIÓN BD SQLITE CON ESTRUCTURA DE COMPRAS SEMANALES Y MENSUALES PROFIT PLUS
+    const sqliteDB = {
+      "sem31": {
+        "Lunes": [
+          {
+            co_cli: "C-00102",
+            nombre: "Comercial La Esquina C.A.",
+            direccion: "Av. Bolivar #45",
+            estado: "Pendiente",
+            gps: null,
+            historial: [
+              { mes: "Enero", sub: "Mes -5", total: 120, semanas: [
+                { semana: "Semana 1", fecha: "05/01", doc: "FAC-1002", canti: 30, monto: "$300.00" },
+                { semana: "Semana 2", fecha: "12/01", doc: "FAC-1015", canti: 40, monto: "$400.00" },
+                { semana: "Semana 3", fecha: "19/01", doc: "FAC-1028", canti: 25, monto: "$250.00" },
+                { semana: "Semana 4", fecha: "26/01", doc: "FAC-1040", canti: 25, monto: "$250.00" }
+              ]},
+              { mes: "Febrero", sub: "Mes -4", total: 95, semanas: [
+                { semana: "Semana 1", fecha: "04/02", doc: "FAC-1105", canti: 20, monto: "$200.00" },
+                { semana: "Semana 2", fecha: "11/02", doc: "FAC-1120", canti: 35, monto: "$350.00" },
+                { semana: "Semana 3", fecha: "18/02", doc: "FAC-1135", canti: 15, monto: "$150.00" },
+                { semana: "Semana 4", fecha: "25/02", doc: "FAC-1150", canti: 25, monto: "$250.00" }
+              ]},
+              { mes: "Marzo", sub: "Mes -3", total: 140, semanas: [
+                { semana: "Semana 1", fecha: "03/03", doc: "FAC-1210", canti: 45, monto: "$450.00" },
+                { semana: "Semana 2", fecha: "10/03", doc: "FAC-1225", canti: 30, monto: "$300.00" },
+                { semana: "Semana 3", fecha: "17/03", doc: "FAC-1240", canti: 35, monto: "$350.00" },
+                { semana: "Semana 4", fecha: "24/03", doc: "FAC-1260", canti: 30, monto: "$300.00" }
+              ]},
+              { mes: "Abril", sub: "Mes -2", total: 110, semanas: [
+                { semana: "Semana 1", fecha: "07/04", doc: "FAC-1301", canti: 25, monto: "$250.00" },
+                { semana: "Semana 2", fecha: "14/04", doc: "FAC-1318", canti: 30, monto: "$300.00" },
+                { semana: "Semana 3", fecha: "21/04", doc: "FAC-1332", canti: 20, monto: "$200.00" },
+                { semana: "Semana 4", fecha: "28/04", doc: "FAC-1349", canti: 35, monto: "$350.00" }
+              ]},
+              { mes: "Mayo", sub: "Mes -1", total: 160, semanas: [
+                { semana: "Semana 1", fecha: "05/05", doc: "FAC-1405", canti: 50, monto: "$500.00" },
+                { semana: "Semana 2", fecha: "12/05", doc: "FAC-1422", canti: 40, monto: "$400.00" },
+                { semana: "Semana 3", fecha: "19/05", doc: "FAC-1438", canti: 35, monto: "$350.00" },
+                { semana: "Semana 4", fecha: "26/05", doc: "FAC-1450", canti: 35, monto: "$350.00" }
+              ]},
+              { mes: "Junio", sub: "Actual", total: 180, semanas: [
+                { semana: "Semana 1", fecha: "02/06", doc: "FAC-1502", canti: 55, monto: "$550.00" },
+                { semana: "Semana 2", fecha: "09/06", doc: "FAC-1520", canti: 45, monto: "$450.00" },
+                { semana: "Semana 3", fecha: "16/06", doc: "FAC-1535", canti: 40, monto: "$400.00" },
+                { semana: "Semana 4", fecha: "23/06", doc: "FAC-1550", canti: 40, monto: "$400.00" }
+              ]}
+            ]
+          },
+          {
+            co_cli: "C-00105",
+            nombre: "Supermercado Central, S.A.",
+            direccion: "Calle 10 con Carrera 15",
+            estado: "Pendiente",
+            gps: null,
+            historial: [
+              { mes: "Enero", sub: "Mes -5", total: 340, semanas: [
+                { semana: "Semana 1", fecha: "06/01", doc: "FAC-2010", canti: 80, monto: "$800.00" },
+                { semana: "Semana 2", fecha: "13/01", doc: "FAC-2025", canti: 90, monto: "$900.00" },
+                { semana: "Semana 3", fecha: "20/01", doc: "FAC-2041", canti: 85, monto: "$850.00" },
+                { semana: "Semana 4", fecha: "27/01", doc: "FAC-2060", canti: 85, monto: "$850.00" }
+              ]},
+              { mes: "Febrero", sub: "Mes -4", total: 410, semanas: [
+                { semana: "Semana 1", fecha: "03/02", doc: "FAC-2101", canti: 100, monto: "$1,000.00" },
+                { semana: "Semana 2", fecha: "10/02", doc: "FAC-2115", canti: 110, monto: "$1,100.00" },
+                { semana: "Semana 3", fecha: "17/02", doc: "FAC-2130", canti: 95, monto: "$950.00" },
+                { semana: "Semana 4", fecha: "24/02", doc: "FAC-2148", canti: 105, monto: "$1,050.00" }
+              ]},
+              { mes: "Marzo", sub: "Mes -3", total: 390, semanas: [
+                { semana: "Semana 1", fecha: "02/03", doc: "FAC-2202", canti: 90, monto: "$900.00" },
+                { semana: "Semana 2", fecha: "09/03", doc: "FAC-2218", canti: 100, monto: "$1,000.00" },
+                { semana: "Semana 3", fecha: "16/03", doc: "FAC-2234", canti: 95, monto: "$950.00" },
+                { semana: "Semana 4", fecha: "23/03", doc: "FAC-2250", canti: 105, monto: "$1,050.00" }
+              ]},
+              { mes: "Abril", sub: "Mes -2", total: 450, semanas: [
+                { semana: "Semana 1", fecha: "06/04", doc: "FAC-2305", canti: 115, monto: "$1,150.00" },
+                { semana: "Semana 2", fecha: "13/04", doc: "FAC-2320", canti: 120, monto: "$1,200.00" },
+                { semana: "Semana 3", fecha: "20/04", doc: "FAC-2338", canti: 105, monto: "$1,050.00" },
+                { semana: "Semana 4", fecha: "27/04", doc: "FAC-2355", canti: 110, monto: "$1,100.00" }
+              ]},
+              { mes: "Mayo", sub: "Mes -1", total: 420, semanas: [
+                { semana: "Semana 1", fecha: "04/05", doc: "FAC-2410", canti: 100, monto: "$1,000.00" },
+                { semana: "Semana 2", fecha: "11/05", doc: "FAC-2426", canti: 110, monto: "$1,100.00" },
+                { semana: "Semana 3", fecha: "18/05", doc: "FAC-2440", canti: 105, monto: "$1,050.00" },
+                { semana: "Semana 4", fecha: "25/05", doc: "FAC-2460", canti: 105, monto: "$1,050.00" }
+              ]},
+              { mes: "Junio", sub: "Actual", total: 510, semanas: [
+                { semana: "Semana 1", fecha: "01/06", doc: "FAC-2501", canti: 130, monto: "$1,300.00" },
+                { semana: "Semana 2", fecha: "08/06", doc: "FAC-2519", canti: 125, monto: "$1,250.00" },
+                { semana: "Semana 3", fecha: "15/06", doc: "FAC-2534", canti: 125, monto: "$1,250.00" },
+                { semana: "Semana 4", fecha: "22/06", doc: "FAC-2552", canti: 130, monto: "$1,300.00" }
+              ]}
+            ]
+          },
+          {
+            co_cli: "C-00109",
+            nombre: "Bodega Don José",
+            direccion: "Urb. Los Naranjos Cl. 3",
+            estado: "Completado",
+            gps: { lat: 10.0671, lng: -69.3482 },
+            historial: [
+              { mes: "Enero", sub: "Mes -5", total: 45, semanas: [
+                { semana: "Semana 1", fecha: "05/01", doc: "FAC-3001", canti: 10, monto: "$100.00" },
+                { semana: "Semana 2", fecha: "12/01", doc: "FAC-3002", canti: 15, monto: "$150.00" },
+                { semana: "Semana 3", fecha: "19/01", doc: "FAC-3003", canti: 10, monto: "$100.00" },
+                { semana: "Semana 4", fecha: "26/01", doc: "FAC-3004", canti: 10, monto: "$100.00" }
+              ]},
+              { mes: "Febrero", sub: "Mes -4", total: 50, semanas: [
+                { semana: "Semana 1", fecha: "04/02", doc: "FAC-3011", canti: 12, monto: "$120.00" },
+                { semana: "Semana 2", fecha: "11/02", doc: "FAC-3012", canti: 13, monto: "$130.00" },
+                { semana: "Semana 3", fecha: "18/02", doc: "FAC-3013", canti: 15, monto: "$150.00" },
+                { semana: "Semana 4", fecha: "25/02", doc: "FAC-3014", canti: 10, monto: "$100.00" }
+              ]},
+              { mes: "Marzo", sub: "Mes -3", total: 30, semanas: [
+                { semana: "Semana 1", fecha: "03/03", doc: "FAC-3021", canti: 8, monto: "$80.00" },
+                { semana: "Semana 2", fecha: "10/03", doc: "FAC-3022", canti: 7, monto: "$70.00" },
+                { semana: "Semana 3", fecha: "17/03", doc: "FAC-3023", canti: 8, monto: "$80.00" },
+                { semana: "Semana 4", fecha: "24/03", doc: "FAC-3024", canti: 7, monto: "$70.00" }
+              ]},
+              { mes: "Abril", sub: "Mes -2", total: 60, semanas: [
+                { semana: "Semana 1", fecha: "07/04", doc: "FAC-3031", canti: 15, monto: "$150.00" },
+                { semana: "Semana 2", fecha: "14/04", doc: "FAC-3032", canti: 15, monto: "$150.00" },
+                { semana: "Semana 3", fecha: "21/04", doc: "FAC-3033", canti: 15, monto: "$150.00" },
+                { semana: "Semana 4", fecha: "28/04", doc: "FAC-3034", canti: 15, monto: "$150.00" }
+              ]},
+              { mes: "Mayo", sub: "Mes -1", total: 55, semanas: [
+                { semana: "Semana 1", fecha: "05/05", doc: "FAC-3041", canti: 14, monto: "$140.00" },
+                { semana: "Semana 2", fecha: "12/05", doc: "FAC-3042", canti: 14, monto: "$140.00" },
+                { semana: "Semana 3", fecha: "19/05", doc: "FAC-3043", canti: 13, monto: "$130.00" },
+                { semana: "Semana 4", fecha: "26/05", doc: "FAC-3044", canti: 14, monto: "$140.00" }
+              ]},
+              { mes: "Junio", sub: "Actual", total: 70, semanas: [
+                { semana: "Semana 1", fecha: "02/06", doc: "FAC-3051", canti: 20, monto: "$200.00" },
+                { semana: "Semana 2", fecha: "09/06", doc: "FAC-3052", canti: 15, monto: "$150.00" },
+                { semana: "Semana 3", fecha: "16/06", doc: "FAC-3053", canti: 18, monto: "$180.00" },
+                { semana: "Semana 4", fecha: "23/06", doc: "FAC-3054", canti: 17, monto: "$170.00" }
+              ]}
+            ]
+          }
+        ],
+        "Martes": [
+          {
+            co_cli: "C-00201",
+            nombre: "Farmacia & Variedades El Sol",
+            direccion: "Av. Principal #102",
+            estado: "Pendiente",
+            gps: null,
+            historial: [
+              { mes: "Enero", sub: "Mes -5", total: 210, semanas: [{ semana: "Semana 1", fecha: "05/01", doc: "FAC-401", canti: 50, monto: "$500" }, { semana: "Semana 2", fecha: "12/01", doc: "FAC-402", canti: 60, monto: "$600" }, { semana: "Semana 3", fecha: "19/01", doc: "FAC-403", canti: 50, monto: "$500" }, { semana: "Semana 4", fecha: "26/01", doc: "FAC-404", canti: 50, monto: "$500" }]},
+              { mes: "Febrero", sub: "Mes -4", total: 180, semanas: [{ semana: "Semana 1", fecha: "04/02", doc: "FAC-411", canti: 40, monto: "$400" }, { semana: "Semana 2", fecha: "11/02", doc: "FAC-412", canti: 50, monto: "$500" }, { semana: "Semana 3", fecha: "18/02", doc: "FAC-413", canti: 45, monto: "$450" }, { semana: "Semana 4", fecha: "25/02", doc: "FAC-414", canti: 45, monto: "$450" }]},
+              { mes: "Marzo", sub: "Mes -3", total: 230, semanas: [{ semana: "Semana 1", fecha: "03/03", doc: "FAC-421", canti: 60, monto: "$600" }, { semana: "Semana 2", fecha: "10/03", doc: "FAC-422", canti: 60, monto: "$600" }, { semana: "Semana 3", fecha: "17/03", doc: "FAC-423", canti: 55, monto: "$550" }, { semana: "Semana 4", fecha: "24/03", doc: "FAC-424", canti: 55, monto: "$550" }]},
+              { mes: "Abril", sub: "Mes -2", total: 250, semanas: [{ semana: "Semana 1", fecha: "07/04", doc: "FAC-431", canti: 65, monto: "$650" }, { semana: "Semana 2", fecha: "14/04", doc: "FAC-432", canti: 65, monto: "$650" }, { semana: "Semana 3", fecha: "21/04", doc: "FAC-433", canti: 60, monto: "$600" }, { semana: "Semana 4", fecha: "28/04", doc: "FAC-434", canti: 60, monto: "$600" }]},
+              { mes: "Mayo", sub: "Mes -1", total: 220, semanas: [{ semana: "Semana 1", fecha: "05/05", doc: "FAC-441", canti: 55, monto: "$550" }, { semana: "Semana 2", fecha: "12/05", doc: "FAC-442", canti: 55, monto: "$550" }, { semana: "Semana 3", fecha: "19/05", doc: "FAC-443", canti: 55, monto: "$550" }, { semana: "Semana 4", fecha: "26/05", doc: "FAC-444", canti: 55, monto: "$550" }]},
+              { mes: "Junio", sub: "Actual", total: 290, semanas: [{ semana: "Semana 1", fecha: "02/06", doc: "FAC-451", canti: 75, monto: "$750" }, { semana: "Semana 2", fecha: "09/06", doc: "FAC-452", canti: 70, monto: "$700" }, { semana: "Semana 3", fecha: "16/06", doc: "FAC-453", canti: 75, monto: "$750" }, { semana: "Semana 4", fecha: "23/06", doc: "FAC-454", canti: 70, monto: "$700" }]}
+            ]
+          }
+        ]
+      },
+      "sem32": {
+        "Lunes": [
+          {
+            co_cli: "C-00401",
+            nombre: "Comercial Los Andes",
+            direccion: "Sector El Carmen #12",
+            estado: "Pendiente",
+            gps: null,
+            historial: [
+              { mes: "Enero", sub: "Mes -5", total: 90, semanas: [{ semana: "Semana 1", fecha: "05/01", doc: "FAC-501", canti: 25, monto: "$250" }, { semana: "Semana 2", fecha: "12/01", doc: "FAC-502", canti: 25, monto: "$250" }, { semana: "Semana 3", fecha: "19/01", doc: "FAC-503", canti: 20, monto: "$200" }, { semana: "Semana 4", fecha: "26/01", doc: "FAC-504", canti: 20, monto: "$200" }]},
+              { mes: "Febrero", sub: "Mes -4", total: 85, semanas: [{ semana: "Semana 1", fecha: "04/02", doc: "FAC-511", canti: 20, monto: "$200" }, { semana: "Semana 2", fecha: "11/02", doc: "FAC-512", canti: 25, monto: "$250" }, { semana: "Semana 3", fecha: "18/02", doc: "FAC-513", canti: 20, monto: "$200" }, { semana: "Semana 4", fecha: "25/02", doc: "FAC-514", canti: 20, monto: "$200" }]},
+              { mes: "Marzo", sub: "Mes -3", total: 110, semanas: [{ semana: "Semana 1", fecha: "03/03", doc: "FAC-521", canti: 30, monto: "$300" }, { semana: "Semana 2", fecha: "10/03", doc: "FAC-522", canti: 30, monto: "$300" }, { semana: "Semana 3", fecha: "17/03", doc: "FAC-523", canti: 25, monto: "$250" }, { semana: "Semana 4", fecha: "24/03", doc: "FAC-524", canti: 25, monto: "$250" }]},
+              { mes: "Abril", sub: "Mes -2", total: 95, semanas: [{ semana: "Semana 1", fecha: "07/04", doc: "FAC-531", canti: 25, monto: "$250" }, { semana: "Semana 2", fecha: "14/04", doc: "FAC-532", canti: 25, monto: "$250" }, { semana: "Semana 3", fecha: "21/04", doc: "FAC-533", canti: 20, monto: "$200" }, { semana: "Semana 4", fecha: "28/04", doc: "FAC-534", canti: 25, monto: "$250" }]},
+              { mes: "Mayo", sub: "Mes -1", total: 130, semanas: [{ semana: "Semana 1", fecha: "05/05", doc: "FAC-541", canti: 35, monto: "$350" }, { semana: "Semana 2", fecha: "12/05", doc: "FAC-542", canti: 35, monto: "$350" }, { semana: "Semana 3", fecha: "19/05", doc: "FAC-543", canti: 30, monto: "$300" }, { semana: "Semana 4", fecha: "26/05", doc: "FAC-544", canti: 30, monto: "$300" }]},
+              { mes: "Junio", sub: "Actual", total: 120, semanas: [{ semana: "Semana 1", fecha: "02/06", doc: "FAC-551", canti: 30, monto: "$300" }, { semana: "Semana 2", fecha: "09/06", doc: "FAC-552", canti: 30, monto: "$300" }, { semana: "Semana 3", fecha: "16/06", doc: "FAC-553", canti: 30, monto: "$300" }, { semana: "Semana 4", fecha: "23/06", doc: "FAC-554", canti: 30, monto: "$300" }]}
+            ]
+          }
+        ]
+      },
+      pendientesSincronizacionMSSQL: []
+    };
+
+    let clienteSeleccionado = null;
+    let chartInstance = null;
+    let mesSeleccionadoIdx = 5; // Por defecto el último mes (Junio - Actual)
+    let isSimulatedOffline = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      actualizarDias();
+      escucharRed();
+      registrarServiceWorker();
+    });
+
+    function actualizarDias() {
+      const sem = document.getElementById('select-semana').value;
+      const selectDia = document.getElementById('select-dia');
+      selectDia.innerHTML = '';
+
+      const diasDisponibles = Object.keys(sqliteDB[sem] || {});
+      
+      diasDisponibles.forEach(dia => {
+        const option = document.createElement('option');
+        option.value = dia;
+        option.textContent = dia;
+        selectDia.appendChild(option);
+      });
+
+      renderClientesDesdeSQLite();
+    }
+
+    function renderClientesDesdeSQLite() {
+      const sem = document.getElementById('select-semana').value;
+      const dia = document.getElementById('select-dia').value;
+      const contenedor = document.getElementById('lista-clientes');
+      const contador = document.getElementById('cant-clientes');
+
+      const clientes = (sqliteDB[sem] && sqliteDB[sem][dia]) || [];
+      contador.textContent = clientes.length;
+      contenedor.innerHTML = '';
+
+      if (clientes.length === 0) {
+        contenedor.innerHTML = `
+          <div class="text-center py-8 bg-slate-50 border border-dashed rounded-xl">
+            <i data-lucide="calendar-off" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+            <p class="text-xs text-slate-400 font-medium">No hay clientes en SQLite para este día.</p>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
+
+      clientes.forEach(cli => {
+        const item = document.createElement('div');
+        const esCompletado = cli.estado === 'Completado';
+
+        item.className = `p-3 rounded-xl border transition cursor-pointer flex items-center justify-between shadow-sm hover:border-indigo-300 ${
+          esCompletado ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200'
+        }`;
+        
+        item.onclick = () => verDetalleCliente(cli);
+
+        item.innerHTML = `
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-xs text-slate-800">${cli.nombre}</span>
+              ${esCompletado ? '<span class="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">Visitado</span>' : ''}
+            </div>
+            <p class="text-[11px] text-slate-500 flex items-center gap-1">
+              <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i> ${cli.direccion}
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5 text-indigo-600">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </div>
+        `;
+        contenedor.appendChild(item);
+      });
+
+      lucide.createIcons();
+    }
+
+    function verDetalleCliente(cliente) {
+      clienteSeleccionado = cliente;
+      document.getElementById('detalle-cliente').classList.remove('hidden');
+      document.getElementById('cliente-nombre').textContent = cliente.nombre;
+      document.getElementById('cliente-codigo').textContent = `co_cli: ${cliente.co_cli}`;
+
+      const gpsDisplay = document.getElementById('gps-display');
+      const gpsBadge = document.getElementById('gps-status-badge');
+
+      if (cliente.gps) {
+        gpsDisplay.textContent = `Lat: ${cliente.gps.lat} | Lng: ${cliente.gps.lng}`;
+        gpsBadge.textContent = "Capturado";
+        gpsBadge.className = "text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold";
+      } else {
+        gpsDisplay.textContent = "Lat: -- | Lng: --";
+        gpsBadge.textContent = "Sin Fijar";
+        gpsBadge.className = "text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono";
+      }
+
+      // Seleccionar el último mes por defecto
+      mesSeleccionadoIdx = cliente.historial.length - 1;
+      
+      // Renderizar Canvas y Tabla
+      renderChartCanvas(cliente.historial);
+      renderTablaSemanal(mesSeleccionadoIdx);
+
+      document.getElementById('detalle-cliente').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('detalle-cliente').classList.add('hidden');
+      clienteSeleccionado = null;
+    }
+
+    // RENDERIZAR HISTOGRAMA EN EL CANVAS CON MANEJO DE CLICS
+    function renderChartCanvas(historialData) {
+      const canvasEl = document.getElementById('comprasChart');
+      const ctx = canvasEl.getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      const labels = historialData.map(h => `${h.sub}\n(${h.mes.substring(0,3)})`);
+      const totals = historialData.map(h => h.total);
+
+      // Generar colores resaltando la barra seleccionada
+      const bgColors = historialData.map((_, idx) => 
+        idx === mesSeleccionadoIdx ? 'rgba(79, 70, 229, 0.95)' : 'rgba(203, 213, 225, 0.85)'
+      );
+      const borderColors = historialData.map((_, idx) => 
+        idx === mesSeleccionadoIdx ? '#3730a3' : '#94a3b8'
+      );
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Cant. Comprada (Unid.)',
+            data: totals,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (event, activeElements) => {
+            // DETECTAR CLIC EN LA BARRA DEL CANVAS
+            if (activeElements.length > 0) {
+              const clickedIdx = activeElements[0].index;
+              mesSeleccionadoIdx = clickedIdx;
+              
+              // Actualizar colores visuales en el Canvas
+              chartInstance.data.datasets[0].backgroundColor = historialData.map((_, idx) => 
+                idx === clickedIdx ? 'rgba(79, 70, 229, 0.95)' : 'rgba(203, 213, 225, 0.85)'
+              );
+              chartInstance.data.datasets[0].borderColor = historialData.map((_, idx) => 
+                idx === clickedIdx ? '#3730a3' : '#94a3b8'
+              );
+              chartInstance.update();
+
+              // Renderizar la tabla de desglose semanal correspondiente al clic
+              renderTablaSemanal(clickedIdx);
+              showToast(`📊 Visualizando desglose de ${historialData[clickedIdx].mes}`);
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => ` Total: ${context.raw} unid. (Toca para ver semanas)`
+              }
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+            x: { ticks: { font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    // GENERAR LA TABLA CON EL DESGLOSE SEMANAL DEL MES SELECCIONADO
+    function renderTablaSemanal(idxMes) {
+      if (!clienteSeleccionado || !clienteSeleccionado.historial[idxMes]) return;
+
+      const mesObj = clienteSeleccionado.historial[idxMes];
+      
+      document.getElementById('tabla-mes-titulo').textContent = `Desglose Semanal - ${mesObj.mes} (${mesObj.sub})`;
+      document.getElementById('tabla-mes-sub').textContent = `Ventas realizadas en ${mesObj.mes}`;
+      document.getElementById('badge-total-mes').textContent = `Total: ${mesObj.total} unid.`;
+
+      const tbody = document.getElementById('tabla-semanal-body');
+      tbody.innerHTML = '';
+
+      mesObj.semanas.forEach((sem, sIdx) => {
+        const tr = document.createElement('tr');
+        tr.className = sIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+
+        tr.innerHTML = `
+          <td class="p-1.5 border-b border-slate-100 font-semibold text-slate-700">
+            ${sem.semana}
+            <span class="block text-[9px] text-slate-400 font-normal">${sem.fecha}</span>
+          </td>
+          <td class="p-1.5 border-b border-slate-100 font-mono text-indigo-600 font-bold">${sem.doc}</td>
+          <td class="p-1.5 border-b border-slate-100 text-center font-bold text-slate-800">${sem.canti}</td>
+          <td class="p-1.5 border-b border-slate-100 text-right font-semibold text-emerald-600">${sem.monto}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function capturarGPS() {
+      if (!clienteSeleccionado) return;
+
+      const gpsDisplay = document.getElementById('gps-display');
+      const gpsBadge = document.getElementById('gps-status-badge');
+
+      gpsDisplay.textContent = "Obteniendo coordenadas GPS...";
+
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude.toFixed(5);
+            const lng = pos.coords.longitude.toFixed(5);
+            
+            clienteSeleccionado.gps = { lat, lng };
+            gpsDisplay.textContent = `Lat: ${lat} | Lng: ${lng}`;
+            gpsBadge.textContent = "Capturado";
+            gpsBadge.className = "text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold";
+
+            showToast("📍 Coordenadas GPS fijadas exitosamente");
+          },
+          (error) => {
+            const mockLat = (10.0670 + Math.random() * 0.005).toFixed(5);
+            const mockLng = (-69.3450 + Math.random() * 0.005).toFixed(5);
+
+            clienteSeleccionado.gps = { lat: mockLat, lng: mockLng };
+            gpsDisplay.textContent = `Lat: ${mockLat} | Lng: ${mockLng} (Simulado)`;
+            gpsBadge.textContent = "Capturado";
+            gpsBadge.className = "text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold";
+
+            showToast("📍 Coordenadas GPS registradas (Simulación)");
+          }
+        );
+      }
+    }
+
+    function guardarRegistroLocal() {
+      if (!clienteSeleccionado) return;
+
+      clienteSeleccionado.estado = 'Completado';
+      const eventoVisita = {
+        co_cli: clienteSeleccionado.co_cli,
+        nombre: clienteSeleccionado.nombre,
+        timestamp: new Date().toISOString(),
+        gps: clienteSeleccionado.gps
+      };
+
+      sqliteDB.pendientesSincronizacionMSSQL.push(eventoVisita);
+      actualizarContadorPendientes();
+
+      const estaEnLinea = navigator.onLine && !isSimulatedOffline;
+
+      if (!estaEnLinea) {
+        showToast("📦 Guardado en SQLite Local (Modo Offline)");
+      } else {
+        showToast("💾 Registrado en SQLite local. Listo para sincronizar.");
+      }
+
+      renderClientesDesdeSQLite();
+      cerrarDetalle();
+    }
+
+    function escucharRed() {
+      window.addEventListener('online', updateNetworkUI);
+      window.addEventListener('offline', updateNetworkUI);
+    }
+
+    function toggleOfflineSim() {
+      isSimulatedOffline = !isSimulatedOffline;
+      const btn = document.getElementById('toggle-net-btn');
+      btn.textContent = isSimulatedOffline ? "Volver Online" : "Simular Offline";
+      btn.className = isSimulatedOffline 
+        ? "ml-1 bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded transition font-bold" 
+        : "ml-1 bg-slate-800 hover:bg-slate-700 text-white text-[10px] px-2 py-0.5 rounded border border-slate-600 transition";
+      
+      updateNetworkUI();
+    }
+
+    function updateNetworkUI() {
+      const isOnline = navigator.onLine && !isSimulatedOffline;
+      const statusIndicator = document.getElementById('status-indicator');
+      const statusText = document.getElementById('status-text');
+
+      if (isOnline) {
+        statusIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 status-pulse";
+        statusText.textContent = "En línea (Profit OK)";
+        statusText.className = "font-medium text-emerald-200";
+
+        if (sqliteDB.pendientesSincronizacionMSSQL.length > 0) {
+          sincronizarConProfit();
+        }
+      } else {
+        statusIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-400 status-pulse";
+        statusText.textContent = "Modo Offline";
+        statusText.className = "font-medium text-amber-200";
+      }
+    }
+
+    function sincronizarConProfit() {
+      const isOnline = navigator.onLine && !isSimulatedOffline;
+      const icon = document.getElementById('sync-icon');
+
+      if (!isOnline) {
+        showToast("⚠️ Imposible conectar con el servidor de Profit Plus");
+        return;
+      }
+
+      if (sqliteDB.pendientesSincronizacionMSSQL.length === 0) {
+        showToast("👍 SQLite está al día. No hay datos pendientes.");
+        return;
+      }
+
+      icon.classList.add('animate-spin');
+
+      setTimeout(() => {
+        const totalSync = sqliteDB.pendientesSincronizacionMSSQL.length;
+        sqliteDB.pendientesSincronizacionMSSQL = [];
+        actualizarContadorPendientes();
+        icon.classList.remove('animate-spin');
+        showToast(`🔄 ¡Éxito! ${totalSync} visitas enviadas a Profit Plus (MSSQL)`);
+      }, 1200);
+    }
+
+    function actualizarContadorPendientes() {
+      document.getElementById('pending-count').textContent = sqliteDB.pendientesSincronizacionMSSQL.length;
+    }
+
+    function registrarServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          self.addEventListener('install', e => self.skipWaiting());
+          self.addEventListener('activate', e => self.clients.claim());
+          self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('PWA Offline'))));
+        `;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(url).catch(() => {});
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toast-message');
+      toastMessage.textContent = message;
+      
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

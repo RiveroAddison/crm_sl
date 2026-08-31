@@ -1,0 +1,304 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum EstadoCrossSelling {
+  COMPRA
+  NO_COMPRA
+  NA
+}
+
+enum FuenteLead {
+  REDES
+  WEB
+  LLAMADA
+  REFERIDO
+}
+
+enum EstadoCalificacionLead {
+  NUEVO
+  CALIFICADO
+  DESCARTADO
+}
+
+// ==========================================
+// MODELOS
+// ==========================================
+
+/// Modelo para los usuarios de la plataforma
+model Usuario {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  nombre          String
+  password        String
+  activo          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  usuarioEmpresas UsuarioEmpresa[]
+  oportunidades   Oportunidad[]
+  leads           Lead[]
+  pedidos         Pedido[]
+  refreshTokens   RefreshToken[]
+}
+
+/// Modelo para el catálogo de empresas del grupo San Luis y sus credenciales de Profit
+model Empresa {
+  id               String           @id @default(uuid())
+  nombre           String
+  profitDbHost     String?
+  profitDbName     String?
+  profitDbUser     String?
+  profitDbPassword String?
+  activo           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  usuarioEmpresas  UsuarioEmpresa[]
+  clientesEmpresa  ClienteEmpresa[]
+  oportunidades    Oportunidad[]
+  leads            Lead[]
+  pedidos          Pedido[]
+}
+
+/// Tabla pivote para asignación de usuarios a empresas y roles de acceso
+model UsuarioEmpresa {
+  id        String   @id @default(uuid())
+  usuarioId String
+  empresaId String
+  rol       String   @default("VENDEDOR")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, empresaId])
+  @@index([empresaId])
+  @@index([usuarioId])
+}
+
+/// Maestro corporativo con datos fiscales unificados del grupo por RIF
+model ClienteCorporativo {
+  id                 String              @id @default(uuid())
+  rif                String              @unique
+  razonSocial        String
+  direccion          String?
+  telefono           String?
+  matriz             Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  clientesEmpresa    ClienteEmpresa[]
+  crossSellingMatriz CrossSellingMatriz?
+  oportunidades      Oportunidad[]
+}
+
+/// Datos del cliente específicos para una unidad de negocio / empresa
+model ClienteEmpresa {
+  id                   String             @id @default(uuid())
+  clienteCorporativoId String
+  empresaId            String
+  profitCodCli         String
+  vendedor             String?
+  estado               String?            @default("ACTIVO")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  clienteCorporativo   ClienteCorporativo @relation(fields: [clienteCorporativoId], references: [id], onDelete: Cascade)
+  empresa              Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  visitas              VisitaCliente[]
+  ventas               VentaCliente[]
+  pedidos              Pedido[]
+
+  @@unique([empresaId, profitCodCli])
+  @@index([empresaId])
+  @@index([clienteCorporativoId])
+}
+
+/// Agenda semanal de visitas asignada a un cliente
+model VisitaCliente {
+  id               String         @id @default(uuid())
+  clienteEmpresaId String
+  semana           Int
+  dia              String
+  fecha            DateTime?
+  estado           String         @default("PENDIENTE")
+  visitadoAt       DateTime?
+  latitud          Float?
+  longitud         Float?
+  comentario       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  clienteEmpresa ClienteEmpresa @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteEmpresaId, semana, dia])
+  @@index([semana, dia])
+}
+
+/// Facturacion historica importada desde Profit Plus
+model VentaCliente {
+  id               String         @id @default(uuid())
+  clienteEmpresaId String
+  mes              String
+  semana           Int
+  fecha            DateTime
+  documento        String
+  unidades         Int
+  monto            Float
+  createdAt        DateTime       @default(now())
+
+  clienteEmpresa ClienteEmpresa @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteEmpresaId, documento])
+  @@index([clienteEmpresaId, mes])
+}
+
+/// Matriz de consumo consolidada por unidad de negocio para ventas cruzadas (Cross-Selling)
+model CrossSellingMatriz {
+  id                   String             @id @default(uuid())
+  clienteCorporativoId String             @unique
+  combustible          EstadoCrossSelling @default(NA)
+  lubricantes          EstadoCrossSelling @default(NA)
+  autopartes           EstadoCrossSelling @default(NA)
+  transporte           EstadoCrossSelling @default(NA)
+  alimentosBalanceados EstadoCrossSelling @default(NA)
+  alimentosCongelados  EstadoCrossSelling @default(NA)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  clienteCorporativo   ClienteCorporativo @relation(fields: [clienteCorporativoId], references: [id], onDelete: Cascade)
+
+  @@index([clienteCorporativoId])
+}
+
+/// Oportunidades comerciales captadas por los vendedores
+model Oportunidad {
+  id              String   @id @default(uuid())
+  empresaId       String
+  clienteCorporativoId String?
+  leadId          String?
+  vendedorId      String
+  vendedorNombre  String
+  titulo          String
+  razonSocial     String
+  rif             String
+  etapa           String   @default("NUEVO")
+  valorEstimado   Float
+  fechaContacto   DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  vendedor        Usuario  @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  clienteCorporativo ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
+  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId, vendedorId])
+  @@index([empresaId, etapa])
+  @@index([clienteCorporativoId])
+  @@index([leadId])
+}
+
+model Lead {
+  id                  String                @id @default(uuid())
+  empresaId           String
+  nombreContacto      String
+  empresaNombre       String
+  rif                 String?
+  email               String?
+  telefono            String?
+  fuente              FuenteLead
+  estadoCalificacion  EstadoCalificacionLead @default(NUEVO)
+  presupuesto         Float?
+  necesidad           String?
+  autoridad           String?
+  tiempo              String?
+  vendedorId          String
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  empresa             Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  vendedor            Usuario               @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  oportunidades       Oportunidad[]
+
+  @@index([empresaId, estadoCalificacion])
+  @@index([empresaId, vendedorId])
+}
+
+/// Pedidos y ordenes de venta asociadas a clientes
+model Pedido {
+  id               String          @id @default(uuid())
+  empresaId        String
+  clienteEmpresaId String
+  vendedorId       String
+  estado           String          @default("PENDIENTE")
+  montoTotal       Float           @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  empresa          Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  clienteEmpresa   ClienteEmpresa  @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+  vendedor         Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  detalles         DetallePedido[]
+
+  @@index([empresaId, vendedorId])
+  @@index([empresaId, estado])
+}
+
+/// Detalle y renglones del pedido
+model DetallePedido {
+  id             String  @id @default(uuid())
+  pedidoId       String
+  producto       String
+  cantidad       Int
+  precioUnitario Float
+
+  pedido         Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+}
+
+/// Refresh tokens rotativos con deteccion de reuso (familias).
+/// Se guarda el HASH del token (nunca el token en claro).
+model RefreshToken {
+  id        String   @id @default(uuid())
+  // Hash SHA-256 del token (hex). El token en claro solo vive en la cookie del cliente.
+  tokenHash String   @unique
+  // Familia: todos los tokens descendientes del mismo login comparten familiaId.
+  // Si se detecta reuso de un token revocado, se invalida toda la familia.
+  familiaId String
+  userId    String
+  tenantId  String
+  rol       String
+  // Dispositivo / user-agent de origen (auditoria, no autorizacion).
+  userAgent String?
+  ip        String?
+  // Caducidad y revocacion.
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedById String? @unique
+  createdAt DateTime @default(now())
+
+  user     Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy       RefreshToken?  @relation("RefreshRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replacements     RefreshToken[] @relation("RefreshRotation")
+
+  @@index([userId])
+  @@index([familiaId])
+  @@index([expiresAt])
+}

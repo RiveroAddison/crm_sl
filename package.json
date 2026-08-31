@@ -1,0 +1,21 @@
+{
+  "name": "crm-sl-monorepo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "concurrently \"npm run build -w backend\" \"npm run build -w frontend\"",
+    "build:backend": "npm run build -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "prisma:seed": "npm run prisma:seed -w backend",
+    "prisma:migrate": "npm run prisma:migrate -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
