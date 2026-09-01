@@ -10,6 +10,7 @@ export type CreateOrderItemInput = {
 export type CreateOrderInput = {
   clienteEmpresaId?: string;
   oportunidadId?: string;
+  empresaClienteId?: string;
   detalles: CreateOrderItemInput[];
 };
 
@@ -19,6 +20,9 @@ const include = {
     include: {
       clienteCorporativo: true
     }
+  },
+  empresaCliente: {
+    select: { id: true, nombre: true, rif: true }
   },
   vendedor: {
     select: {
@@ -41,6 +45,8 @@ export async function listOrders(context: RequestContext) {
 
 export async function createOrder(context: RequestContext, input: CreateOrderInput) {
   let clienteEmpresaId = input.clienteEmpresaId;
+  let empresaClienteId = input.empresaClienteId || null;
+
   if (!clienteEmpresaId && input.oportunidadId) {
     const opportunity = await prisma.oportunidad.findFirst({
       where: {
@@ -59,6 +65,7 @@ export async function createOrder(context: RequestContext, input: CreateOrderInp
         }
       });
       clienteEmpresaId = clientEmpresa?.id;
+      empresaClienteId = empresaClienteId || opportunity.empresaClienteId;
     }
   }
 
@@ -81,6 +88,7 @@ export async function createOrder(context: RequestContext, input: CreateOrderInp
   return prisma.pedido.create({
     data: {
       empresaId: context.tenantId,
+      empresaClienteId: empresaClienteId,
       clienteEmpresaId: client.id,
       vendedorId: context.userId,
       montoTotal: total,
@@ -111,4 +119,3 @@ export async function updateOrderStatus(context: RequestContext, id: string, est
     include
   });
 }
-

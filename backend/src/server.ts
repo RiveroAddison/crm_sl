@@ -10,6 +10,7 @@ import prospectosRouter from './routes/prospectos.routes.js';
 import visitasRouter from './routes/visitas.routes.js';
 import usuariosRouter from './routes/usuarios.routes.js';
 import empresasRouter from './routes/empresas.routes.js';
+import empresasClientesRouter from './routes/empresasClientes.routes.js';
 import profitRouter from './routes/profit.routes.js';
 import {
   helmetMiddleware,
@@ -48,6 +49,7 @@ app.use('/api/prospectos', prospectosRouter);
 app.use('/api/visitas', visitasRouter);
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/empresas', empresasRouter);
+app.use('/api/empresas-clientes', empresasClientesRouter);
 app.use('/api/profit', profitRouter);
 
 // Middleware final: captura cualquier error de CORS lanzado por el middleware de cors

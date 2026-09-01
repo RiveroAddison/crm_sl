@@ -71,6 +71,30 @@ model Empresa {
   oportunidades    Oportunidad[]
   leads            Lead[]
   pedidos          Pedido[]
+  empresaClientes  EmpresaCliente[]
+}
+
+/// Empresas/clientes externos que llegan por leads y oportunidades (separados de Empresa tenant)
+model EmpresaCliente {
+  id            String   @id @default(uuid())
+  empresaId     String
+  nombre        String
+  rif           String?
+  email         String?
+  telefono      String?
+  direccion     String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leads         Lead[]
+  oportunidades Oportunidad[]
+  pedidos       Pedido[]
+
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+  @@index([rif])
 }
 
 /// Tabla pivote para asignación de usuarios a empresas y roles de acceso
@@ -188,28 +212,31 @@ model CrossSellingMatriz {
 
 /// Oportunidades comerciales captadas por los vendedores
 model Oportunidad {
-  id              String   @id @default(uuid())
-  empresaId       String
+  id                   String          @id @default(uuid())
+  empresaId            String
+  empresaClienteId     String?
   clienteCorporativoId String?
-  leadId          String?
-  vendedorId      String
-  vendedorNombre  String
-  titulo          String
-  razonSocial     String
-  rif             String
-  etapa           String   @default("NUEVO")
-  valorEstimado   Float
-  fechaContacto   DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  leadId               String?
+  vendedorId           String
+  vendedorNombre       String
+  titulo               String
+  razonSocial          String
+  rif                  String
+  etapa                String          @default("NUEVO")
+  valorEstimado        Float
+  fechaContacto        DateTime
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
-  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  vendedor        Usuario  @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
-  clienteCorporativo ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
-  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  empresa              Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaCliente       EmpresaCliente? @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
+  vendedor             Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  clienteCorporativo   ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
+  lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, etapa])
+  @@index([empresaClienteId])
   @@index([clienteCorporativoId])
   @@index([leadId])
 }
@@ -217,6 +244,7 @@ model Oportunidad {
 model Lead {
   id                  String                @id @default(uuid())
   empresaId           String
+  empresaClienteId    String?
   nombreContacto      String
   empresaNombre       String
   rif                 String?
@@ -233,17 +261,20 @@ model Lead {
   updatedAt           DateTime              @updatedAt
 
   empresa             Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaCliente      EmpresaCliente?       @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
   vendedor            Usuario               @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   oportunidades       Oportunidad[]
 
   @@index([empresaId, estadoCalificacion])
   @@index([empresaId, vendedorId])
+  @@index([empresaClienteId])
 }
 
 /// Pedidos y ordenes de venta asociadas a clientes
 model Pedido {
   id               String          @id @default(uuid())
   empresaId        String
+  empresaClienteId String?
   clienteEmpresaId String
   vendedorId       String
   estado           String          @default("PENDIENTE")
@@ -252,12 +283,14 @@ model Pedido {
   updatedAt        DateTime        @updatedAt
 
   empresa          Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaCliente   EmpresaCliente? @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
   clienteEmpresa   ClienteEmpresa  @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
   vendedor         Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   detalles         DetallePedido[]
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, estado])
+  @@index([empresaClienteId])
 }
 
 /// Detalle y renglones del pedido

@@ -19,6 +19,7 @@ const optionalEmail = z.string().email().optional().or(z.literal(''));
 export const LeadSchema = z.object({
   id: z.string(),
   empresaId: UuidSchema,
+  empresaClienteId: z.string().nullable().optional(),
   nombreContacto: z.string(),
   empresaNombre: z.string(),
   rif: z.string().nullable(),
@@ -36,6 +37,11 @@ export const LeadSchema = z.object({
     nombre: z.string(),
     email: z.string().email(),
   }),
+  empresaCliente: z.object({
+    id: z.string(),
+    nombre: z.string(),
+    rif: z.string().nullable(),
+  }).nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -54,6 +60,7 @@ export const LeadInputSchema = z.object({
   autoridad: z.string().optional(),
   tiempo: z.string().optional(),
   vendedorId: UuidSchema.optional(),
+  empresaClienteId: UuidSchema.optional(),
 });
 export type LeadInput = z.infer<typeof LeadInputSchema>;
 

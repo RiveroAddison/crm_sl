@@ -28,7 +28,6 @@ export const authApi = {
       headers: { Authorization: `Bearer ${preAuthToken}` },
       _skipRefresh: true,
     });
-    console.log(data)
     return Paso2LoginResponseSchema.parse(data);
   },
 

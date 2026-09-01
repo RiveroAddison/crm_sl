@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getRequestContext } from '../middleware/auth.js';
 
-const prospectSchema = z.object({ razonSocial: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/), titulo: z.string().min(3), etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']).default('NUEVO'), valorEstimado: z.number().min(0), fechaContacto: z.string().min(1), vendedorNombre: z.string().min(1) });
+const prospectSchema = z.object({ razonSocial: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/), titulo: z.string().min(3), etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']).default('NUEVO'), valorEstimado: z.number().min(0), fechaContacto: z.string().min(1), vendedorNombre: z.string().min(1), empresaClienteId: z.string().uuid().optional() });
 const stageSchema = z.object({ etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']) });
 
 function response(prospect: any) { return { ...prospect, fechaContacto: prospect.fechaContacto.toISOString().slice(0, 10) }; }
@@ -15,7 +15,7 @@ export async function list(req: Request, res: Response) {
 
 export async function create(req: Request, res: Response) {
   const parsed = prospectSchema.safeParse(req.body); if (!parsed.success) return res.status(400).json({ success: false, data: null, error: parsed.error.issues[0]?.message || 'Prospecto inválido' });
-  try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); const item = await prisma.oportunidad.create({ data: { empresaId: context.tenantId, vendedorId: context.userId, vendedorNombre: context.rol === 'VENDEDOR' ? context.user.nombre : parsed.data.vendedorNombre, titulo: parsed.data.titulo, razonSocial: parsed.data.razonSocial, rif: parsed.data.rif, etapa: parsed.data.etapa, valorEstimado: parsed.data.valorEstimado, fechaContacto: new Date(`${parsed.data.fechaContacto}T00:00:00.000Z`) } }); return res.status(201).json({ success: true, data: response(item), error: '' }); }
+  try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); const item = await prisma.oportunidad.create({ data: { empresaId: context.tenantId, empresaClienteId: parsed.data.empresaClienteId || null, vendedorId: context.userId, vendedorNombre: context.rol === 'VENDEDOR' ? context.user.nombre : parsed.data.vendedorNombre, titulo: parsed.data.titulo, razonSocial: parsed.data.razonSocial, rif: parsed.data.rif, etapa: parsed.data.etapa, valorEstimado: parsed.data.valorEstimado, fechaContacto: new Date(`${parsed.data.fechaContacto}T00:00:00.000Z`) } }); return res.status(201).json({ success: true, data: response(item), error: '' }); }
   catch { return res.status(500).json({ success: false, data: null, error: 'No fue posible crear el prospecto' }); }
 }
 

@@ -593,7 +593,7 @@ onBeforeUnmount(() => {
 
               <!-- MASTER TABS -->
               <button
-                v-if="auth.rol === 'MASTER' || auth.rol === 'ADMIN'"
+                v-if="auth.rol === 'MASTER'"
                 :class="[
                   'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 border border-lime-300/60',
                   activeView === 'usuarios' ? 'bg-[#8bd329] text-[#073b73] shadow-sm font-bold' : 'text-slate-700 bg-lime-50/50 hover:text-[#073b73] hover:bg-lime-100/80'
@@ -606,7 +606,7 @@ onBeforeUnmount(() => {
               </button>
 
               <button
-                v-if="auth.rol === 'MASTER' || auth.rol === 'ADMIN'"
+                v-if="auth.rol === 'MASTER'"
                 :class="[
                   'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 border border-lime-300/60',
                   activeView === 'empresas' ? 'bg-[#8bd329] text-[#073b73] shadow-sm font-bold' : 'text-slate-700 bg-lime-50/50 hover:text-[#073b73] hover:bg-lime-100/80'
@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
               </button>
 
               <button
-                v-if="auth.rol === 'MASTER' || auth.rol === 'ADMIN'"
+                v-if="auth.rol === 'MASTER'"
                 :class="[
                   'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5',
                   activeView === 'profit-sync' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
