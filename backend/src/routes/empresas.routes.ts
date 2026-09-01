@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { list, get, create, update, remove, testConnection } from '../controllers/empresas.controller.js';
+import { list, get, create, update, remove } from '../controllers/empresas.controller.js';
 
 const router = Router();
 
@@ -8,6 +8,5 @@ router.get('/:id', get);
 router.post('/', create);
 router.put('/:id', update);
 router.delete('/:id', remove);
-router.post('/test-connection', testConnection);
 
 export default router;
