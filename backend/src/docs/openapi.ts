@@ -24,7 +24,7 @@ export const openapi = {
     version: '1.0.0',
     description: 'API REST multiempresa para gestión comercial, visitas, pedidos y sincronización con Profit Plus.'
   },
-  servers: [{ url: 'http://localhost:3000', description: 'Servidor local' }],
+  servers: [{ url: 'http://localhost:4500', description: 'Servidor local' }],
   tags: [
     { name: 'Autenticación', description: 'Inicio, selección de empresa y sesión' },
     { name: 'Dashboard', description: 'Resumen comercial de la empresa activa' },

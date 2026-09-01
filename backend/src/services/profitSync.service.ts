@@ -135,9 +135,9 @@ export async function syncVentasForEmpresa(empresa: Empresa) {
 export async function testConect(empresa: Empresa) {
   try {
     const pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
-    const result = await pool.request().query('SELECT 1 AS test');
+    const result = await pool.request().query('SELECT TOP (1000) co_ven,tipo,ven_des,cedula,telefonos,rowguid,email,PSW_M FROM AD_DIST.dbo.vendedor');
     
-    return result.recordset.length > 0 && result.recordset[0].test === 1;
+    return result;
   } catch (error) {
     console.error('Error al probar conexión con Profit:', error);
     throw error;

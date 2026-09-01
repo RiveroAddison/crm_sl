@@ -163,8 +163,8 @@ export async function testConectDB(req: Request, res: Response) {
       return res.status(404).json({ success: false, data: null, error: 'Empresa no encontrada' });
     }
 
-    await testConect(empresa);
-    return res.json({ success: true, data: "Conexión exitosa con Profit", error: '' });
+    const data = await testConect(empresa);
+    return res.json({ success: true, data: data, error: '' });
   } catch (error) {
     console.error('Error al probar conexión con Profit:', error);
     return res.status(500).json({ success: false, data: null, error: 'Error al probar conexión con Profit' });
