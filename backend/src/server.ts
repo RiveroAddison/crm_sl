@@ -29,6 +29,9 @@ const port = Number(process.env.PORT ?? 3000);
 app.use(helmetMiddleware);
 app.use(stripInfoHeaders);
 
+app.get('/api/docs.json', (_req, res) => res.json(openapi));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapi));
+
 // 2) CORS estricto (whitelist desde CORS_ORIGINS)
 app.use(corsMiddleware);
 
@@ -37,9 +40,6 @@ app.use(globalRateLimiter);
 
 // 4) Parseo JSON con limite de payload
 app.use(express.json({ limit: '1mb' }));
-
-app.get('/api/docs.json', (_req, res) => res.json(openapi));
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);

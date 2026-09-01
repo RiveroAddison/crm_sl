@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getMasterOrAdminContext } from '../middleware/auth.js';
-import { syncClientesForEmpresa, syncVentasForEmpresa } from '../services/profitSync.service.js';
+import { syncClientesForEmpresa, syncVentasForEmpresa, testConect } from '../services/profitSync.service.js';
 
 export async function syncClientes(req: Request, res: Response) {
   try {
@@ -147,5 +147,26 @@ export async function getStatus(req: Request, res: Response) {
   } catch (error) {
     console.error('Error al obtener estado Profit:', error);
     return res.status(500).json({ success: false, data: null, error: 'Error al obtener estado' });
+  }
+}
+
+export async function testConectDB(req: Request, res: Response) {
+  try {
+    const context = await getMasterOrAdminContext(req);
+    if (!context) {
+      return res.status(403).json({ success: false, data: null, error: 'No autorizado' });
+    }
+
+    const { empresaId } = req.body;
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+    if (!empresa) {
+      return res.status(404).json({ success: false, data: null, error: 'Empresa no encontrada' });
+    }
+
+    await testConect(empresa);
+    return res.json({ success: true, data: "Conexión exitosa con Profit", error: '' });
+  } catch (error) {
+    console.error('Error al probar conexión con Profit:', error);
+    return res.status(500).json({ success: false, data: null, error: 'Error al probar conexión con Profit' });
   }
 }

@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import type { Empresa } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { fa } from 'zod/locales';
 
 const identifier = /^[A-Za-z0-9_.\[\]]+$/;
 
@@ -131,3 +132,14 @@ export async function syncVentasForEmpresa(empresa: Empresa) {
   return { empresa: empresa.nombre, syncedCount };
 }
 
+export async function testConect(empresa: Empresa) {
+  try {
+    const pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
+    const result = await pool.request().query('SELECT 1 AS test');
+    
+    return result.recordset.length > 0 && result.recordset[0].test === 1;
+  } catch (error) {
+    console.error('Error al probar conexión con Profit:', error);
+    throw error;
+  } 
+}
