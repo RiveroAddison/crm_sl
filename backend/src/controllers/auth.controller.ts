@@ -66,7 +66,7 @@ export async function login(req: Request, res: Response) {
     const preAuthToken = signPreAuthToken(user.id);
     const empresasAsignadas = user.usuarioEmpresas
       .filter((item) => item.empresa.activo)
-      .map((item) => ({ id: item.empresa.id, nombre: item.empresa.nombre }));
+      .map((item) => ({ id: item.empresa.id, nombre: item.empresa.nombre, rubro: item.empresa.rubro, direccion: item.empresa.direccion, telefono: item.empresa.telefono }));
 
     if (empresasAsignadas.length === 0) {
       return res.status(403).json({ success: false, data: null, error: 'El usuario no tiene empresas asignadas activas' });
@@ -149,7 +149,7 @@ export async function selectContext(req: Request, res: Response) {
         accessToken,
         refreshToken, // para clientes que prefieran guardarlo en memoria
         tenantId: access.empresaId,
-        empresa: { id: access.empresa.id, nombre: access.empresa.nombre },
+        empresa: { id: access.empresa.id, nombre: access.empresa.nombre, rubro: access.empresa.rubro, direccion: access.empresa.direccion, telefono: access.empresa.telefono },
         rol,
       },
       error: '',
@@ -312,7 +312,7 @@ export async function me(req: Request, res: Response) {
         user: { id: user.id, email: user.email, nombre: user.nombre, rolGlobal },
         tenantId: ctx.empresaId,
         tenantNombre: ctx.empresa.nombre,
-        empresa: { id: ctx.empresa.id, nombre: ctx.empresa.nombre },
+        empresa: { id: ctx.empresa.id, nombre: ctx.empresa.nombre, rubro: ctx.empresa.rubro, direccion: ctx.empresa.direccion, telefono: ctx.empresa.telefono },
         rol,
       },
       error: '',

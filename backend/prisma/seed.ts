@@ -10,6 +10,10 @@ async function main() {
   await prisma.usuarioEmpresa.deleteMany({});
   await prisma.usuario.deleteMany({});
   await prisma.empresa.deleteMany({});
+  await prisma.clienteCorporativo.deleteMany({});
+  await prisma.clienteEmpresa.deleteMany({});
+  await prisma.oportunidad.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
 
   // 2. Encriptar contraseña para los usuarios
   const hashedPassword = await bcrypt.hash('admin1234', 10);
@@ -47,6 +51,9 @@ async function main() {
   const empresaCombustible = await prisma.empresa.create({
     data: {
       nombre: 'San Luis Combustible',
+      rubro: 'Combustibles',
+      direccion: 'Av. Principal, Edificio San Luis, Piso 2, Maracaibo',
+      telefono: '+58 261-1234567',
       activo: true,
     },
   });
@@ -54,6 +61,9 @@ async function main() {
   const empresaLubricantes = await prisma.empresa.create({
     data: {
       nombre: 'San Luis Lubricantes',
+      rubro: 'Lubricantes',
+      direccion: 'Calle 5, Zona Industrial, Maracaibo',
+      telefono: '+58 261-7654321',
       activo: true,
     },
   });
