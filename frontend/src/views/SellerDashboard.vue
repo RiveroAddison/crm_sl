@@ -103,15 +103,9 @@ onMounted(async () => {
       <template v-else>
         <SellerOverviewMetrics :metrics="dashboard.metrics" />
 
-        <WeeklyRoutePlanner 
-          :weeks="weeks" 
-          :days="days" 
-          v-model:selected-week="selectedWeek" 
-          v-model:selected-day="selectedDay" 
-          :route-clients="routeClients" 
-          :checking-in="checkingIn" 
-          :check-in-error="checkInError" 
-          @check-in="checkIn" 
+        <ClientPortfolioList 
+          :filtered-clients="filteredClients" 
+          v-model:search="search" 
         />
 
         <SalesHistogramChart 
@@ -124,10 +118,17 @@ onMounted(async () => {
           :selected-month-sales="selectedMonthSales" 
         />
 
-        <ClientPortfolioList 
-          :filtered-clients="filteredClients" 
-          v-model:search="search" 
+        <WeeklyRoutePlanner 
+          :weeks="weeks" 
+          :days="days" 
+          v-model:selected-week="selectedWeek" 
+          v-model:selected-day="selectedDay" 
+          :route-clients="routeClients" 
+          :checking-in="checkingIn" 
+          :check-in-error="checkInError" 
+          @check-in="checkIn" 
         />
+
       </template>
     </main>
 
