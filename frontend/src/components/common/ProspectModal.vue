@@ -6,6 +6,9 @@ defineProps<{
     razonSocial: string;
     rif: string;
     titulo: string;
+    rubro?: string;
+    direccion?: string;
+    telefono?: string;
     etapa: EtapaOportunidad;
     valorEstimado: number;
     fechaContacto: string;
@@ -15,6 +18,7 @@ defineProps<{
   loading: boolean;
   error: string;
   isAdmin?: boolean;
+  empresaRubro?: string;
 }>();
 
 defineEmits<{
@@ -30,27 +34,38 @@ defineEmits<{
         <h2 class="text-xl font-bold text-brand-blue">Nuevo prospecto</h2>
         <button type="button" class="text-slate-400 hover:text-slate-600 text-lg font-bold" @click="$emit('close')">✕</button>
       </div>
-      
+
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
         Razón social
         <input v-model="newProspect.razonSocial" required class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
       </label>
-      
+
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
         RIF
         <input v-model="newProspect.rif" required placeholder="J-12345678-0" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
       </label>
-      
+
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
-        Oportunidad
-        <input v-model="newProspect.titulo" required class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
+        Rubro
+        <input :value="empresaRubro || newProspect.rubro || ''" disabled class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-500 cursor-not-allowed">
       </label>
-      
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
+          Dirección
+          <input v-model="newProspect.direccion" placeholder="Dirección del cliente" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
+        </label>
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
+          Teléfono
+          <input v-model="newProspect.telefono" placeholder="Teléfono del cliente" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
+        </label>
+      </div>
+
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
         Valor estimado
         <input v-model.number="newProspect.valorEstimado" type="number" min="0" required class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
       </label>
-      
+
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
         Fecha de contacto
         <input v-model="newProspect.fechaContacto" type="date" required class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">

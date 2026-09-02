@@ -8,6 +8,9 @@ export type { Rol } from './api';
 export const EmpresaAuthSchema = z.object({
   id: UuidSchema,
   nombre: z.string().min(1),
+  rubro: z.string().nullable().optional(),
+  direccion: z.string().nullable().optional(),
+  telefono: z.string().nullable().optional(),
 });
 export type EmpresaAuth = z.infer<typeof EmpresaAuthSchema>;
 

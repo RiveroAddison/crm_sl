@@ -51,6 +51,7 @@ model Usuario {
   oportunidades   Oportunidad[]
   leads           Lead[]
   pedidos         Pedido[]
+  clientesEmpresa ClienteEmpresa[]
   refreshTokens   RefreshToken[]
 }
 
@@ -58,6 +59,9 @@ model Usuario {
 model Empresa {
   id               String           @id @default(uuid())
   nombre           String
+  rubro            String?
+  direccion        String?
+  telefono         String?
   profitDbHost     String?
   profitDbName     String?
   profitDbUser     String?
@@ -138,12 +142,14 @@ model ClienteEmpresa {
   empresaId            String
   profitCodCli         String
   vendedor             String?
+  vendedorId           String?
   estado               String?            @default("ACTIVO")
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
   clienteCorporativo   ClienteCorporativo @relation(fields: [clienteCorporativoId], references: [id], onDelete: Cascade)
   empresa              Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  vendedor_usuario     Usuario?           @relation(fields: [vendedorId], references: [id], onDelete: SetNull)
   visitas              VisitaCliente[]
   ventas               VentaCliente[]
   pedidos              Pedido[]
@@ -220,6 +226,9 @@ model Oportunidad {
   vendedorId           String
   vendedorNombre       String
   titulo               String
+  rubro                String?
+  direccion            String?
+  telefono             String?
   razonSocial          String
   rif                  String
   etapa                String          @default("NUEVO")

@@ -30,7 +30,7 @@ const checkingIn = ref<string | null>(null);
 const checkInError = ref('');
 const showProspectModal = ref(false);
 const prospectFormError = ref('');
-const newProspect = ref({ razonSocial: '', rif: '', titulo: '', etapa: 'NUEVO' as EtapaOportunidad, valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' });
+const newProspect = ref({ razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO' as EtapaOportunidad, valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' });
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const weeks = computed(() => [...new Set(clients.value.flatMap((client) => client.visitas.map((visit) => visit.semana)))].sort((a, b) => a - b));
 const months = computed(() => [...new Set(clients.value.flatMap((client) => client.ventas.map((sale) => sale.mes)))].sort((first, second) => new Date(`1 ${first}`).getTime() - new Date(`1 ${second}`).getTime()));
@@ -67,9 +67,11 @@ async function submitProspect() {
   prospectFormError.value = '';
   try {
     newProspect.value.vendedorNombre = auth.user?.nombre || '';
+    newProspect.value.rubro = auth.empresa?.rubro || '';
+    newProspect.value.titulo = `${auth.empresa?.rubro || 'Oportunidad'} - ${newProspect.value.razonSocial}`;
     await prospects.create(newProspect.value);
     showProspectModal.value = false;
-    newProspect.value = { razonSocial: '', rif: '', titulo: '', etapa: 'NUEVO', valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' };
+    newProspect.value = { razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO', valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' };
   } catch (cause) {
     prospectFormError.value = cause instanceof Error ? cause.message : 'No fue posible crear el prospecto';
   }
@@ -136,7 +138,8 @@ onMounted(async () => {
       v-if="showProspectModal" 
       :new-prospect="newProspect" 
       :loading="prospects.loading" 
-      :error="prospectFormError" 
+      :error="prospectFormError"
+      :empresa-rubro="auth.empresa?.rubro || ''"
       @submit="submitProspect" 
       @close="showProspectModal = false" 
     />
