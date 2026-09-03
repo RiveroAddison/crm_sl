@@ -7,6 +7,8 @@ const orderSchema = z
   .object({
     clienteEmpresaId: z.string().uuid().optional(),
     oportunidadId: z.string().uuid().optional(),
+    cuentaComercialId: z.string().uuid().optional(),
+    empresaClienteId: z.string().uuid().optional(),
     detalles: z
       .array(
         z.object({

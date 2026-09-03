@@ -6,14 +6,21 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando la creación de datos de prueba (Seed)...');
 
-  // 1. Limpiar datos previos si existen (opcional)
+  // 1. Limpiar todos los datos dependientes antes de recrear el catálogo base.
+  await prisma.detallePedido.deleteMany({});
+  await prisma.pedido.deleteMany({});
+  await prisma.visitaCliente.deleteMany({});
+  await prisma.ventaCliente.deleteMany({});
+  await prisma.lead.deleteMany({});
+  await prisma.oportunidad.deleteMany({});
+  await prisma.cuentaComercial.deleteMany({});
+  await prisma.crossSellingMatriz.deleteMany({});
+  await prisma.clienteEmpresa.deleteMany({});
+  await prisma.clienteCorporativo.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
   await prisma.usuarioEmpresa.deleteMany({});
   await prisma.usuario.deleteMany({});
   await prisma.empresa.deleteMany({});
-  await prisma.clienteCorporativo.deleteMany({});
-  await prisma.clienteEmpresa.deleteMany({});
-  await prisma.oportunidad.deleteMany({});
-  await prisma.refreshToken.deleteMany({});
 
   // 2. Encriptar contraseña para los usuarios
   const hashedPassword = await bcrypt.hash('admin1234', 10);

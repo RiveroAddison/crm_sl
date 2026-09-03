@@ -13,12 +13,14 @@ defineProps<{
     valorEstimado: number;
     fechaContacto: string;
     vendedorNombre: string;
+    cuentaComercialId?: string;
   };
   availableSellers?: string[];
   loading: boolean;
   error: string;
   isAdmin?: boolean;
   empresaRubro?: string;
+  cuentasComerciales?: Array<{ id: string; nombre: string; rif: string | null }>;
 }>();
 
 defineEmits<{
@@ -43,6 +45,14 @@ defineEmits<{
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
         RIF
         <input v-model="newProspect.rif" required placeholder="J-12345678-0" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue">
+      </label>
+
+      <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
+        Cuenta comercial
+        <select v-model="newProspect.cuentaComercialId" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-brand-ink">
+          <option value="">Crear o resolver por RIF</option>
+          <option v-for="cuenta in cuentasComerciales || []" :key="cuenta.id" :value="cuenta.id">{{ cuenta.nombre }}{{ cuenta.rif ? ` (${cuenta.rif})` : '' }}</option>
+        </select>
       </label>
 
       <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">

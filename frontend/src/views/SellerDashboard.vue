@@ -5,6 +5,8 @@ import { useDashboardStore } from '../stores/dashboard';
 import { useProspectsStore } from '../stores/prospects';
 import { useVisitasStore } from '../stores/visitas';
 import type { EtapaOportunidad } from '../domain/prospecto';
+import { cuentasComercialesApi } from '../services';
+import type { CuentaComercial } from '../domain';
 
 import SellerHeader from '../components/seller/SellerHeader.vue';
 import SellerOverviewMetrics from '../components/seller/SellerOverviewMetrics.vue';
@@ -30,7 +32,8 @@ const checkingIn = ref<string | null>(null);
 const checkInError = ref('');
 const showProspectModal = ref(false);
 const prospectFormError = ref('');
-const newProspect = ref({ razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO' as EtapaOportunidad, valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' });
+const cuentasComerciales = ref<CuentaComercial[]>([]);
+const newProspect = ref({ razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO' as EtapaOportunidad, valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '', cuentaComercialId: '' });
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const weeks = computed(() => [...new Set(clients.value.flatMap((client) => client.visitas.map((visit) => visit.semana)))].sort((a, b) => a - b));
 const months = computed(() => [...new Set(clients.value.flatMap((client) => client.ventas.map((sale) => sale.mes)))].sort((first, second) => new Date(`1 ${first}`).getTime() - new Date(`1 ${second}`).getTime()));
@@ -71,7 +74,7 @@ async function submitProspect() {
     newProspect.value.titulo = `${auth.empresa?.rubro || 'Oportunidad'} - ${newProspect.value.razonSocial}`;
     await prospects.create(newProspect.value);
     showProspectModal.value = false;
-    newProspect.value = { razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO', valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '' };
+    newProspect.value = { razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO', valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '', cuentaComercialId: '' };
   } catch (cause) {
     prospectFormError.value = cause instanceof Error ? cause.message : 'No fue posible crear el prospecto';
   }
@@ -79,7 +82,8 @@ async function submitProspect() {
 
 onMounted(async () => {
   try {
-    await dashboard.load(true);
+    const [accounts] = await Promise.all([cuentasComercialesApi.list(), dashboard.load(true)]);
+    cuentasComerciales.value = accounts;
     if (months.value.length) { selectedMonth.value = months.value[months.value.length - 1]; }
     if (weeks.value.length) { selectedWeek.value = weeks.value[0]; }
   } catch (cause) {
@@ -140,6 +144,7 @@ onMounted(async () => {
       :loading="prospects.loading" 
       :error="prospectFormError"
       :empresa-rubro="auth.empresa?.rubro || ''"
+      :cuentas-comerciales="cuentasComerciales"
       @submit="submitProspect" 
       @close="showProspectModal = false" 
     />

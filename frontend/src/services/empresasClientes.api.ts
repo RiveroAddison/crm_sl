@@ -1,34 +1,34 @@
 // filepath: src/services/empresasClientes.api.ts
 import { http } from './http';
 import {
-  EmpresaClienteInputSchema,
-  EmpresaClienteListResponseSchema,
-  EmpresaClienteResponseSchema,
+  CuentaComercialInputSchema,
+  CuentaComercialListResponseSchema,
+  CuentaComercialResponseSchema,
   EmpresaClienteDeleteResponseSchema,
-  type EmpresaClienteInput,
+  type CuentaComercialInput,
 } from '../domain/empresaCliente';
 
-export const empresasClientesApi = {
+export const cuentasComercialesApi = {
   async list() {
     const { data } = await http.get('/api/empresas-clientes');
-    return EmpresaClienteListResponseSchema.parse(data).data;
+    return CuentaComercialListResponseSchema.parse(data).data;
   },
 
   async get(id: string) {
     const { data } = await http.get(`/api/empresas-clientes/${id}`);
-    return EmpresaClienteResponseSchema.parse(data).data;
+    return CuentaComercialResponseSchema.parse(data).data;
   },
 
-  async create(input: EmpresaClienteInput) {
-    const body = EmpresaClienteInputSchema.parse(input);
+  async create(input: CuentaComercialInput) {
+    const body = CuentaComercialInputSchema.parse(input);
     const { data } = await http.post('/api/empresas-clientes', body);
-    return EmpresaClienteResponseSchema.parse(data).data;
+    return CuentaComercialResponseSchema.parse(data).data;
   },
 
-  async update(id: string, input: EmpresaClienteInput) {
-    const body = EmpresaClienteInputSchema.parse(input);
+  async update(id: string, input: CuentaComercialInput) {
+    const body = CuentaComercialInputSchema.parse(input);
     const { data } = await http.put(`/api/empresas-clientes/${id}`, body);
-    return EmpresaClienteResponseSchema.parse(data).data;
+    return CuentaComercialResponseSchema.parse(data).data;
   },
 
   async remove(id: string) {
@@ -36,3 +36,5 @@ export const empresasClientesApi = {
     return EmpresaClienteDeleteResponseSchema.parse(data).data;
   },
 };
+
+export const empresasClientesApi = cuentasComercialesApi;

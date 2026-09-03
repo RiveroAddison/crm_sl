@@ -7,7 +7,8 @@ import { useLeadsStore } from '../stores/leads';
 import { usePedidosStore } from '../stores/pedidos';
 import { useAdminMasterStore } from '../stores/adminMaster';
 import { useVisitasStore } from '../stores/visitas';
-import type { EtapaOportunidad, VisitaGps, Rol } from '../domain';
+import { cuentasComercialesApi } from '../services';
+import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol } from '../domain';
 
 const auth = useAuthStore();
 const activeView = ref<'kanban' | 'table' | 'map' | 'leads' | 'pedidos' | 'usuarios' | 'empresas' | 'profit-sync'>('kanban');
@@ -16,6 +17,7 @@ const leads = useLeadsStore();
 const pedidos = usePedidosStore();
 const adminMaster = useAdminMasterStore();
 const visitas = useVisitasStore();
+const cuentasComerciales = ref<CuentaComercial[]>([]);
 
 const showModal = ref(false);
 const showLeadModal = ref(false);
@@ -240,7 +242,8 @@ const newProspect = ref({
   etapa: 'NUEVO' as EtapaOportunidad,
   valorEstimado: 0,
   fechaContacto: new Date().toISOString().slice(0, 10),
-  vendedorNombre: ''
+  vendedorNombre: '',
+  cuentaComercialId: ''
 });
 const formError = ref('');
 const draggingId = ref<string | null>(null);
@@ -256,7 +259,8 @@ const newLead = ref({
   presupuesto: 0,
   necesidad: '',
   autoridad: '',
-  tiempo: ''
+  tiempo: '',
+  cuentaComercialId: ''
 });
 
 const fieldVisits = computed(() =>
@@ -281,7 +285,8 @@ function resetProspectForm() {
     etapa: 'NUEVO',
     valorEstimado: 0,
     fechaContacto: new Date().toISOString().slice(0, 10),
-    vendedorNombre: auth.user?.nombre || ''
+    vendedorNombre: auth.user?.nombre || '',
+    cuentaComercialId: ''
   };
   formError.value = '';
 }
@@ -308,7 +313,8 @@ function resetLeadForm() {
     presupuesto: 0,
     necesidad: '',
     autoridad: '',
-    tiempo: ''
+    tiempo: '',
+    cuentaComercialId: ''
   };
   leadFormError.value = '';
 }
@@ -393,7 +399,8 @@ onMounted(async () => {
     leads.load(),
     loadVisits(),
     pedidos.load(),
-    adminMaster.loadData()
+    adminMaster.loadData(),
+    cuentasComercialesApi.list().then((items) => { cuentasComerciales.value = items; })
   ]);
   resetProspectForm();
   resetLeadForm();
@@ -1424,6 +1431,14 @@ onBeforeUnmount(() => {
             <input v-model="newProspect.titulo" required placeholder="Ej: Suministro mensual lubricantes y diesel" class="w-full">
           </div>
 
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Cuenta comercial</label>
+            <select v-model="newProspect.cuentaComercialId" class="w-full">
+              <option value="">Crear o resolver por RIF</option>
+              <option v-for="cuenta in cuentasComerciales" :key="cuenta.id" :value="cuenta.id">{{ cuenta.nombre }}{{ cuenta.rif ? ` (${cuenta.rif})` : '' }}</option>
+            </select>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Valor Estimado ($) *</label>
@@ -1494,6 +1509,14 @@ onBeforeUnmount(() => {
               <label class="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
               <input v-model="newLead.telefono" placeholder="+58 414..." class="w-full">
             </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Cuenta comercial</label>
+            <select v-model="newLead.cuentaComercialId" class="w-full">
+              <option value="">Crear o resolver por RIF</option>
+              <option v-for="cuenta in cuentasComerciales" :key="cuenta.id" :value="cuenta.id">{{ cuenta.nombre }}{{ cuenta.rif ? ` (${cuenta.rif})` : '' }}</option>
+            </select>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
