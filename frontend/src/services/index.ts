@@ -4,6 +4,7 @@ export { cache } from './cache';
 export { authApi } from './auth.api';
 export { dashboardApi } from './dashboard.api';
 export { empresasClientesApi } from './empresasClientes.api';
+export { cuentasComercialesApi } from './empresasClientes.api';
 export { leadsApi } from './leads.api';
 export { pedidosApi } from './pedidos.api';
 export { prospectosApi } from './prospectos.api';

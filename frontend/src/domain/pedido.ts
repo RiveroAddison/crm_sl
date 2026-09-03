@@ -22,6 +22,8 @@ export const CreatePedidoInputSchema = z
   .object({
     clienteEmpresaId: UuidSchema.optional(),
     oportunidadId: UuidSchema.optional(),
+    cuentaComercialId: UuidSchema.optional(),
+    empresaClienteId: UuidSchema.optional(),
     detalles: z.array(DetallePedidoInputSchema).min(1),
   })
   .refine((v) => Boolean(v.clienteEmpresaId) || Boolean(v.oportunidadId), {
@@ -33,6 +35,7 @@ export const PedidoSchema = z.object({
   id: z.string(),
   empresaId: UuidSchema,
   clienteEmpresaId: z.string(),
+  cuentaComercialId: z.string().nullable().optional(),
   vendedorId: z.string(),
   estado: PedidoEstadoSchema,
   montoTotal: z.number(),

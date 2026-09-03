@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import type { RequestContext } from '../middleware/auth.js';
+import { resolveCuentaComercial } from './cuentasComerciales.service.js';
 
 export type CreateOrderItemInput = {
   producto: string;
@@ -11,6 +12,7 @@ export type CreateOrderInput = {
   clienteEmpresaId?: string;
   oportunidadId?: string;
   empresaClienteId?: string;
+  cuentaComercialId?: string;
   detalles: CreateOrderItemInput[];
 };
 
@@ -21,7 +23,7 @@ const include = {
       clienteCorporativo: true
     }
   },
-  empresaCliente: {
+  cuentaComercial: {
     select: { id: true, nombre: true, rif: true }
   },
   vendedor: {
@@ -45,7 +47,7 @@ export async function listOrders(context: RequestContext) {
 
 export async function createOrder(context: RequestContext, input: CreateOrderInput) {
   let clienteEmpresaId = input.clienteEmpresaId;
-  let empresaClienteId = input.empresaClienteId || null;
+  let cuentaComercialId = input.cuentaComercialId || input.empresaClienteId || null;
 
   if (!clienteEmpresaId && input.oportunidadId) {
     const opportunity = await prisma.oportunidad.findFirst({
@@ -57,7 +59,8 @@ export async function createOrder(context: RequestContext, input: CreateOrderInp
       }
     });
 
-    if (opportunity?.clienteCorporativoId) {
+    if (!opportunity) throw new Error('Oportunidad convertida no encontrada');
+    if (opportunity.clienteCorporativoId) {
       const clientEmpresa = await prisma.clienteEmpresa.findFirst({
         where: {
           empresaId: context.tenantId,
@@ -65,7 +68,22 @@ export async function createOrder(context: RequestContext, input: CreateOrderInp
         }
       });
       clienteEmpresaId = clientEmpresa?.id;
-      empresaClienteId = empresaClienteId || opportunity.empresaClienteId;
+      cuentaComercialId = cuentaComercialId || opportunity.cuentaComercialId;
+    }
+  }
+
+  if (clienteEmpresaId && input.oportunidadId) {
+    const opportunity = await prisma.oportunidad.findFirst({
+      where: { id: input.oportunidadId, empresaId: context.tenantId, etapa: 'CONVERTIDO', ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {}) }
+    });
+    if (!opportunity) throw new Error('Oportunidad convertida no encontrada');
+    if (opportunity.clienteCorporativoId) {
+      const linkedClient = await prisma.clienteEmpresa.findFirst({ where: { id: clienteEmpresaId, empresaId: context.tenantId, clienteCorporativoId: opportunity.clienteCorporativoId } });
+      if (!linkedClient) throw new Error('El cliente no coincide con la oportunidad');
+    }
+    if (input.cuentaComercialId || input.empresaClienteId) {
+      const requestedAccount = await resolveCuentaComercial(context, { id: input.cuentaComercialId || input.empresaClienteId }, { createIfMissing: false });
+      if (opportunity.cuentaComercialId && requestedAccount.id !== opportunity.cuentaComercialId) throw new Error('La cuenta comercial no coincide con la oportunidad');
     }
   }
 
@@ -83,12 +101,16 @@ export async function createOrder(context: RequestContext, input: CreateOrderInp
     throw new Error('Cliente no encontrado o fuera de la cartera');
   }
 
+  const cuentaComercial = cuentaComercialId
+    ? await resolveCuentaComercial(context, { id: cuentaComercialId }, { createIfMissing: false })
+    : null;
+
   const total = input.detalles.reduce((sum, detail) => sum + detail.cantidad * detail.precioUnitario, 0);
 
   return prisma.pedido.create({
     data: {
       empresaId: context.tenantId,
-      empresaClienteId: empresaClienteId,
+      cuentaComercialId: cuentaComercial?.id || null,
       clienteEmpresaId: client.id,
       vendedorId: context.userId,
       montoTotal: total,

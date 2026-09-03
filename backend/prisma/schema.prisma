@@ -75,11 +75,11 @@ model Empresa {
   oportunidades    Oportunidad[]
   leads            Lead[]
   pedidos          Pedido[]
-  empresaClientes  EmpresaCliente[]
+  cuentasComerciales CuentaComercial[]
 }
 
-/// Empresas/clientes externos que llegan por leads y oportunidades (separados de Empresa tenant)
-model EmpresaCliente {
+/// Cuenta externa captada por CRM, separada de la Empresa tenant.
+model CuentaComercial {
   id            String   @id @default(uuid())
   empresaId     String
   nombre        String
@@ -97,8 +97,8 @@ model EmpresaCliente {
   pedidos       Pedido[]
 
   @@unique([empresaId, nombre])
-  @@index([empresaId])
-  @@index([rif])
+  @@unique([empresaId, rif])
+  @@index([empresaId, rif])
 }
 
 /// Tabla pivote para asignación de usuarios a empresas y roles de acceso
@@ -220,7 +220,7 @@ model CrossSellingMatriz {
 model Oportunidad {
   id                   String          @id @default(uuid())
   empresaId            String
-  empresaClienteId     String?
+  cuentaComercialId    String?
   clienteCorporativoId String?
   leadId               String?
   vendedorId           String
@@ -238,14 +238,14 @@ model Oportunidad {
   updatedAt            DateTime        @updatedAt
 
   empresa              Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaCliente       EmpresaCliente? @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
+  cuentaComercial      CuentaComercial? @relation(fields: [cuentaComercialId], references: [id], onDelete: SetNull)
   vendedor             Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   clienteCorporativo   ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
   lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, etapa])
-  @@index([empresaClienteId])
+  @@index([cuentaComercialId])
   @@index([clienteCorporativoId])
   @@index([leadId])
 }
@@ -253,7 +253,7 @@ model Oportunidad {
 model Lead {
   id                  String                @id @default(uuid())
   empresaId           String
-  empresaClienteId    String?
+  cuentaComercialId   String?
   nombreContacto      String
   empresaNombre       String
   rif                 String?
@@ -270,20 +270,20 @@ model Lead {
   updatedAt           DateTime              @updatedAt
 
   empresa             Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaCliente      EmpresaCliente?       @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
+  cuentaComercial     CuentaComercial?      @relation(fields: [cuentaComercialId], references: [id], onDelete: SetNull)
   vendedor            Usuario               @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   oportunidades       Oportunidad[]
 
   @@index([empresaId, estadoCalificacion])
   @@index([empresaId, vendedorId])
-  @@index([empresaClienteId])
+  @@index([cuentaComercialId])
 }
 
 /// Pedidos y ordenes de venta asociadas a clientes
 model Pedido {
   id               String          @id @default(uuid())
   empresaId        String
-  empresaClienteId String?
+  cuentaComercialId String?
   clienteEmpresaId String
   vendedorId       String
   estado           String          @default("PENDIENTE")
@@ -292,14 +292,14 @@ model Pedido {
   updatedAt        DateTime        @updatedAt
 
   empresa          Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaCliente   EmpresaCliente? @relation(fields: [empresaClienteId], references: [id], onDelete: SetNull)
+  cuentaComercial  CuentaComercial? @relation(fields: [cuentaComercialId], references: [id], onDelete: SetNull)
   clienteEmpresa   ClienteEmpresa  @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
   vendedor         Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   detalles         DetallePedido[]
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, estado])
-  @@index([empresaClienteId])
+  @@index([cuentaComercialId])
 }
 
 /// Detalle y renglones del pedido

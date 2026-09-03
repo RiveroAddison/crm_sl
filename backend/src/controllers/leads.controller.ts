@@ -6,11 +6,11 @@ import { convertLead, createLead, deleteLead, listLeads, updateLead } from '../s
 const leadSchema = z.object({
   nombreContacto: z.string().min(2), empresaNombre: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/).optional().or(z.literal('')),
   email: z.string().email().optional().or(z.literal('')), telefono: z.string().optional(), fuente: z.enum(['REDES', 'WEB', 'LLAMADA', 'REFERIDO']),
-  estadoCalificacion: z.enum(['NUEVO', 'CALIFICADO', 'DESCARTADO']).optional(), presupuesto: z.number().min(0).optional(), necesidad: z.string().optional(), autoridad: z.string().optional(), tiempo: z.string().optional(), vendedorId: z.string().uuid().optional(), empresaClienteId: z.string().uuid().optional()
+  estadoCalificacion: z.enum(['NUEVO', 'CALIFICADO', 'DESCARTADO']).optional(), presupuesto: z.number().min(0).optional(), necesidad: z.string().optional(), autoridad: z.string().optional(), tiempo: z.string().optional(), vendedorId: z.string().uuid().optional(), cuentaComercialId: z.string().uuid().optional(), empresaClienteId: z.string().uuid().optional()
 });
 const patchSchema = leadSchema.partial();
 
-function errorStatus(message: string) { return message === 'Lead no encontrado' ? 404 : message.includes('CALIFICADO') ? 409 : 500; }
+function errorStatus(message: string) { return message === 'Lead no encontrado' || message.includes('Cuenta comercial no encontrada') ? 404 : message.includes('Cuenta comercial') || message.includes('coincide') || message.includes('empresa activa') ? 409 : message.includes('CALIFICADO') ? 409 : 500; }
 
 export async function list(req: Request, res: Response) {
   try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); return res.json({ success: true, data: await listLeads(context), error: '' }); }
@@ -24,7 +24,7 @@ export async function create(req: Request, res: Response) {
     if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); 
     const newleads = await createLead(context, parsed.data);
     return res.status(201).json({ success: true, data: newleads, error: '' }); }
-  catch { return res.status(500).json({ success: false, data: null, error: 'No fue posible crear el lead' }); }
+  catch (cause) { const message = cause instanceof Error ? cause.message : 'No fue posible crear el lead'; return res.status(errorStatus(message)).json({ success: false, data: null, error: message }); }
 }
 
 export async function update(req: Request, res: Response) {

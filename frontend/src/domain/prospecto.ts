@@ -8,6 +8,7 @@ export type EtapaOportunidad = z.infer<typeof EtapaOportunidadSchema>;
 export const OportunidadSchema = z.object({
   id: z.string(),
   empresaId: UuidSchema.optional(),
+  cuentaComercialId: z.string().nullable().optional(),
   clienteCorporativoId: z.string().nullable().optional(),
   vendedorId: UuidSchema.optional(),
   vendedorNombre: z.string(),
@@ -36,6 +37,7 @@ export const CrearOportunidadSchema = z.object({
   valorEstimado: z.number().min(0),
   fechaContacto: z.string().min(1),
   vendedorNombre: z.string().min(1),
+  cuentaComercialId: UuidSchema.optional(),
 });
 export type CrearOportunidadForm = z.infer<typeof CrearOportunidadSchema>;
 
