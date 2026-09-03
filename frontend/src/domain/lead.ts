@@ -1,6 +1,6 @@
 // filepath: src/domain/lead.ts
 import { z } from 'zod';
-import { ApiEnvelopeSchema, UuidSchema } from './api';
+import { ApiEnvelopeSchema, OptionalUuidSchema, UuidSchema } from './api';
 
 export const LeadFuenteSchema = z.enum(['REDES', 'WEB', 'LLAMADA', 'REFERIDO']);
 export type LeadFuente = z.infer<typeof LeadFuenteSchema>;
@@ -66,7 +66,7 @@ export const LeadInputSchema = z.object({
   autoridad: z.string().optional(),
   tiempo: z.string().optional(),
   vendedorId: UuidSchema.optional(),
-  cuentaComercialId: UuidSchema.optional(),
+  cuentaComercialId: OptionalUuidSchema,
   empresaClienteId: UuidSchema.optional(),
 });
 export type LeadInput = z.infer<typeof LeadInputSchema>;

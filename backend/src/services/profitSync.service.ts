@@ -47,3 +47,11 @@ export async function syncVentasForEmpresa(empresa: Empresa) {
   return { empresa: empresa.nombre, syncedCount: 0 }; // devuelve un objeto con el nombre de la empresa y la cantidad de ventas sincronizadas
 }
 
+export async function syncSellersForEmpresa(empresa: Empresa) {
+  // aqui va la logica para sincronizar vendedores desde Profit a la base de datos local
+  // por ejemplo, leer los vendedores desde Profit y luego insertarlos o actualizarlos en la base de datos local
+  // puedes usar la función connectionConfig para obtener la configuración de conexión a Profit
+  // y luego usar sql.ConnectionPool para conectarte y ejecutar consultas
+  // finalmente, puedes usar prisma para insertar o actualizar los vendedores en la base de datos local
+  return { empresa: empresa.nombre, syncedCount: 0 }; // devuelve un objeto con el nombre de la empresa y la cantidad de vendedores sincronizados
+}

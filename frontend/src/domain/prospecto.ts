@@ -1,6 +1,6 @@
 // filepath: src/domain/prospecto.ts
 import { z } from 'zod';
-import { ApiEnvelopeSchema, UuidSchema } from './api';
+import { ApiEnvelopeSchema, OptionalUuidSchema, UuidSchema } from './api';
 
 export const EtapaOportunidadSchema = z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']);
 export type EtapaOportunidad = z.infer<typeof EtapaOportunidadSchema>;
@@ -37,7 +37,7 @@ export const CrearOportunidadSchema = z.object({
   valorEstimado: z.number().min(0),
   fechaContacto: z.string().min(1),
   vendedorNombre: z.string().min(1),
-  cuentaComercialId: UuidSchema.optional(),
+  cuentaComercialId: OptionalUuidSchema,
 });
 export type CrearOportunidadForm = z.infer<typeof CrearOportunidadSchema>;
 

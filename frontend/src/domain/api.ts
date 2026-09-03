@@ -7,6 +7,12 @@ import { z } from 'zod';
 export const UuidSchema = z.string().uuid();
 export type Uuid = z.infer<typeof UuidSchema>;
 
+const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
+export const OptionalUuidSchema = z.preprocess(
+  (value) => value === '' || value === EMPTY_UUID ? undefined : value,
+  UuidSchema.optional(),
+);
+
 /** Cadena de fecha ISO-8601 (YYYY-MM-DD). */
 export const IsoDateSchema = z
   .string()

@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { getRequestContext } from '../middleware/auth.js';
 import { convertLead, createLead, deleteLead, listLeads, updateLead } from '../services/leads.service.js';
 
+const optionalUuid = z.preprocess((value) => value === '' || value === '00000000-0000-0000-0000-000000000000' ? undefined : value, z.string().uuid().optional());
 const leadSchema = z.object({
   nombreContacto: z.string().min(2), empresaNombre: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/).optional().or(z.literal('')),
   email: z.string().email().optional().or(z.literal('')), telefono: z.string().optional(), fuente: z.enum(['REDES', 'WEB', 'LLAMADA', 'REFERIDO']),
-  estadoCalificacion: z.enum(['NUEVO', 'CALIFICADO', 'DESCARTADO']).optional(), presupuesto: z.number().min(0).optional(), necesidad: z.string().optional(), autoridad: z.string().optional(), tiempo: z.string().optional(), vendedorId: z.string().uuid().optional(), cuentaComercialId: z.string().uuid().optional(), empresaClienteId: z.string().uuid().optional()
+  estadoCalificacion: z.enum(['NUEVO', 'CALIFICADO', 'DESCARTADO']).optional(), presupuesto: z.number().min(0).optional(), necesidad: z.string().optional(), autoridad: z.string().optional(), tiempo: z.string().optional(), vendedorId: optionalUuid, cuentaComercialId: optionalUuid, empresaClienteId: optionalUuid
 });
 const patchSchema = leadSchema.partial();
 
