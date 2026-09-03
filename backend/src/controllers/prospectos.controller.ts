@@ -4,7 +4,8 @@ import { prisma } from '../lib/prisma.js';
 import { getRequestContext } from '../middleware/auth.js';
 import { resolveCuentaComercial } from '../services/cuentasComerciales.service.js';
 
-const prospectSchema = z.object({ razonSocial: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/), titulo: z.string().min(3), rubro: z.string().optional(), direccion: z.string().optional(), telefono: z.string().optional(), etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']).default('NUEVO'), valorEstimado: z.number().min(0), fechaContacto: z.string().min(1), vendedorNombre: z.string().min(1), cuentaComercialId: z.string().uuid().optional(), empresaClienteId: z.string().uuid().optional() });
+const optionalUuid = z.preprocess((value) => value === '' || value === '00000000-0000-0000-0000-000000000000' ? undefined : value, z.string().uuid().optional());
+const prospectSchema = z.object({ razonSocial: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/), titulo: z.string().min(3), rubro: z.string().optional(), direccion: z.string().optional(), telefono: z.string().optional(), etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']).default('NUEVO'), valorEstimado: z.number().min(0), fechaContacto: z.string().min(1), vendedorNombre: z.string().min(1), cuentaComercialId: optionalUuid, empresaClienteId: optionalUuid });
 const stageSchema = z.object({ etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']) });
 
 function response(prospect: any) { return { ...prospect, fechaContacto: prospect.fechaContacto.toISOString().slice(0, 10) }; }

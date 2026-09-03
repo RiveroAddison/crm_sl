@@ -107,11 +107,75 @@ async function main() {
     ],
   });
 
+  // 8. Cliente corporativo con historial de ventas de los últimos seis meses.
+  const clienteCorporativo = await prisma.clienteCorporativo.create({
+    data: {
+      rif: 'J-12345678-9',
+      razonSocial: 'Transporte Central C.A.',
+      direccion: 'Av. Intercomunal, Maracaibo',
+      telefono: '+58 414-5551234',
+      matriz: true,
+      crossSellingMatriz: {
+        create: {
+          combustible: 'COMPRA',
+          lubricantes: 'COMPRA',
+          autopartes: 'NA',
+          transporte: 'COMPRA',
+        },
+      },
+    },
+  });
+
+  const clientesEmpresa = await Promise.all([
+    prisma.clienteEmpresa.create({
+      data: {
+        clienteCorporativoId: clienteCorporativo.id,
+        empresaId: empresaCombustible.id,
+        profitCodCli: 'CLI-0001',
+        vendedor: vendedor1.nombre,
+        vendedorId: vendedor1.id,
+        estado: 'ACTIVO',
+      },
+    }),
+    prisma.clienteEmpresa.create({
+      data: {
+        clienteCorporativoId: clienteCorporativo.id,
+        empresaId: empresaLubricantes.id,
+        profitCodCli: 'CLI-0002',
+        vendedor: vendedor2.nombre,
+        vendedorId: vendedor2.id,
+        estado: 'ACTIVO',
+      },
+    }),
+  ]);
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  const currentMonth = new Date();
+  const sales = clientesEmpresa.flatMap((client, clientIndex) => Array.from({ length: 6 }, (_, monthIndex) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (5 - monthIndex), 15);
+    const amount = (clientIndex === 0 ? 18500 : 9200) + monthIndex * (clientIndex === 0 ? 750 : 420);
+    return {
+      clienteEmpresaId: client.id,
+      mes: `${monthNames[date.getMonth()]} ${date.getFullYear()}`,
+      semana: Math.ceil(date.getDate() / 7),
+      fecha: date,
+      documento: `FAC-${clientIndex + 1}${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`,
+      unidades: (clientIndex === 0 ? 120 : 48) + monthIndex * (clientIndex === 0 ? 8 : 4),
+      monto: amount,
+    };
+  }));
+  await prisma.ventaCliente.createMany({ data: sales });
+
   console.log('✅ Seed completado con éxito:');
   console.log(`- Master: ${usuarioMaster.email}`);
   console.log(`- Vendedor 1: ${vendedor1.email}`);
   console.log(`- Vendedor 2: ${vendedor2.email}`);
   console.log(`- Empresas creadas y asociadas: ${empresaCombustible.nombre}, ${empresaLubricantes.nombre}`);
+  console.log(`- Cliente corporativo: ${clienteCorporativo.razonSocial}`);
+  console.log(`- Ventas históricas creadas: ${sales.length}`);
 }
 
 main()
