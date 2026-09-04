@@ -1,30 +1,51 @@
 <script setup lang="ts">
 type Sale = { mes: string; semana: number; unidades: number; monto: number };
 
-defineProps<{
-  months: string[];
-  sales: number[];
-  selectedMonth: string;
-  selectedMonthTotal: number;
-  selectedMonthUnits: number;
-  weeklyBreakdown: number[];
-  selectedMonthSales: Sale[];
-}>();
+withDefaults(
+  defineProps<{
+    months: string[];
+    sales: number[];
+    selectedMonth: string;
+    selectedMonthTotal: number;
+    selectedMonthUnits: number;
+    weeklyBreakdown: number[];
+    selectedMonthSales: Sale[];
+    chartTitle?: string;
+    chartSubtitle?: string;
+    clearLabel?: string;
+  }>(),
+  {
+    chartTitle: 'Histograma de Ventas (Últimos 9 Meses)',
+    chartSubtitle: 'Toca o haz clic en cualquier mes para desglosar el detalle de las 4 semanas.',
+    clearLabel: '',
+  },
+);
 
 defineEmits<{
   (e: 'update:selectedMonth', month: string): void;
+  (e: 'clear-selection'): void;
 }>();
 </script>
 
 <template>
   <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-8">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-      <div>
-        <div class="flex items-center gap-3">
-          <h2 class="text-xl font-bold text-brand-blue">Histograma de Ventas (Últimos 9 Meses)</h2>
+      <div class="min-w-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-xl font-bold text-brand-blue">{{ chartTitle }}</h2>
           <span class="bg-sky-100 text-brand-blue font-semibold text-xs px-2.5 py-0.5 rounded-full">Interactivo</span>
+          <button
+            v-if="clearLabel"
+            type="button"
+            class="ml-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-3 py-1 transition"
+            :aria-label="clearLabel"
+            @click="$emit('clear-selection')"
+          >
+            <span aria-hidden="true">✕</span>
+            <span>{{ clearLabel }}</span>
+          </button>
         </div>
-        <p class="text-sm text-slate-500 mt-1">Toca o haz clic en cualquier mes para desglosar el detalle de las 4 semanas.</p>
+        <p class="text-sm text-slate-500 mt-1">{{ chartSubtitle }}</p>
       </div>
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-2 text-xs text-slate-500">
