@@ -59,6 +59,7 @@ model Usuario {
 model Empresa {
   id               String           @id @default(uuid())
   nombre           String
+  rif              String?
   rubro            String?
   direccion        String?
   telefono         String?
