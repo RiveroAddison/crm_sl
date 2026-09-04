@@ -9,13 +9,21 @@ type Client = {
   vendedor?: string;
 };
 
-const props = defineProps<{
-  filteredClients: Client[];
-  search: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    filteredClients: Client[];
+    search: string;
+    onlyWithSales?: boolean;
+  }>(),
+  {
+    onlyWithSales: false,
+  },
+);
 
 defineEmits<{
   (e: 'update:search', value: string): void;
+  (e: 'update:onlyWithSales', value: boolean): void;
+  (e: 'select-client', client: Client): void;
 }>();
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -24,10 +32,11 @@ defineEmits<{
 const PAGE_SIZE = 5;
 const currentPage = ref(1);
 
-// Si cambia la búsqueda o el universo de resultados, volvemos a la página 1
-// para evitar quedar atrapado en una página vacía.
+// Si cambia la búsqueda, el switch "solo con ventas" o el universo de
+// resultados, volvemos a la página 1 para evitar quedar atrapado en
+// una página vacía.
 watch(
-  () => [props.search, props.filteredClients.length],
+  () => [props.search, props.onlyWithSales, props.filteredClients.length],
   () => {
     currentPage.value = 1;
   },
@@ -89,15 +98,45 @@ function nextPage(): void {
         <h2 class="text-xl font-bold text-brand-blue">Clientes de mi cartera</h2>
         <p class="text-sm text-slate-500">Consulta rápida de clientes asignados</p>
       </div>
-      <div class="relative w-full sm:w-72">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">⌕</span>
-        <input
-          :value="search"
-          placeholder="Buscar por empresa, RIF o estado"
-          aria-label="Buscar clientes"
-          @input="$emit('update:search', ($event.target as HTMLInputElement).value)"
-          class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue"
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+        <label
+          class="inline-flex items-center gap-2 cursor-pointer select-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg pl-2.5 pr-3 py-1.5 transition"
+          :title="onlyWithSales ? 'Mostrando solo clientes con ventas registradas en los últimos 9 meses' : 'Mostrar todos los clientes de mi cartera'"
         >
+          <span
+            class="text-xs font-bold text-brand-blue w-4 h-4 rounded-full bg-white border border-brand-blue flex items-center justify-center shrink-0"
+            aria-hidden="true"
+          >$</span>
+          <span class="text-xs font-semibold text-slate-700">Solo con ventas</span>
+          <span class="relative inline-flex items-center">
+            <input
+              type="checkbox"
+              role="switch"
+              class="peer sr-only"
+              :checked="onlyWithSales"
+              aria-label="Filtrar solo clientes con ventas"
+              @change="$emit('update:onlyWithSales', ($event.target as HTMLInputElement).checked)"
+            >
+            <span
+              class="w-9 h-5 rounded-full bg-slate-300 peer-checked:bg-brand-blue transition-colors duration-200 ease-in-out"
+              aria-hidden="true"
+            ></span>
+            <span
+              class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ease-in-out peer-checked:translate-x-4"
+              aria-hidden="true"
+            ></span>
+          </span>
+        </label>
+        <div class="relative w-full sm:w-72">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">⌕</span>
+          <input
+            :value="search"
+            placeholder="Buscar por empresa, RIF o estado"
+            aria-label="Buscar clientes"
+            @input="$emit('update:search', ($event.target as HTMLInputElement).value)"
+            class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue"
+          >
+        </div>
       </div>
     </div>
 
@@ -121,15 +160,23 @@ function nextPage(): void {
         </div>
         <button
           class="w-8 h-8 rounded-full bg-slate-100 hover:bg-brand-blue hover:text-white transition flex items-center justify-center text-slate-500 text-sm font-bold shrink-0"
-          title="Ver cliente"
-          aria-label="Ver detalle del cliente"
+          title="Ver histograma de ventas del cliente"
+          aria-label="Ver histograma de ventas del cliente"
+          @click="$emit('select-client', client)"
         >→</button>
       </div>
     </div>
 
-    <!-- Estado vacío: distingue "no hay clientes" vs "búsqueda sin resultados" -->
+    <!-- Estado vacío: contextual según los filtros activos -->
     <div v-else class="py-10 text-center text-slate-400 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200">
-      <p v-if="search.trim()">
+      <p v-if="onlyWithSales && search.trim()">
+        No hay clientes con ventas registradas que coincidan con
+        <span class="font-semibold text-slate-600">"{{ search }}"</span>.
+      </p>
+      <p v-else-if="onlyWithSales">
+        No tienes clientes con ventas registradas en los últimos 9 meses.
+      </p>
+      <p v-else-if="search.trim()">
         No se encontraron clientes que coincidan con
         <span class="font-semibold text-slate-600">"{{ search }}"</span>.
       </p>
