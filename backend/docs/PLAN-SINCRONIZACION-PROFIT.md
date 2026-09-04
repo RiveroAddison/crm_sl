@@ -345,3 +345,47 @@ curl -X POST http://localhost:4500/api/profit/sync/all \
 > pruebas puede no estar accesible desde el entorno donde se ejecute la
 > batería de tests; en ese caso, los endpoints devolverán `ok=false` con el
 > motivo en `error` y los `stats.read = 0` sin causar daño a la BD local.
+
+## Scripts de prueba y configuración
+
+Se han añadido tres scripts para verificar el flujo sin necesidad de
+modificar código:
+
+| Script | Comando | Propósito |
+|---|---|---|
+| `scripts/configure-profit.mjs` | `npm run profit:configure` | Configura las credenciales Profit (`profitDbHost/Name/User/Password`) en la empresa "San Luis ..." usando variables de entorno `PROFIT_HOST/PROFIT_NAME/PROFIT_USER/PROFIT_PASSWORD` (con defaults). Solo se ejecuta una vez. |
+| `scripts/test-profit-sync.mjs` | `npm run test:profit` | Test end-to-end del servicio de sincronización con un mock de MSSQL. Mockea el módulo `mssql` mediante un loader ESM que apunta al shim `.mssql-shim/`. Valida idempotencia, validaciones (RIF vacío, cod vacío, unidades inválidas), agregación de líneas de factura y el rango móvil de 9 meses. |
+| `scripts/test-http.mjs` | `npm run test:http` | Smoke test HTTP que hace login, selecciona empresa, y prueba `GET /api/profit/status`, `POST /api/profit/sync/test`, `POST /api/profit/sync/all` y `POST /api/profit/sync/sellers`. Requiere servidor en pie. |
+| `scripts/inspect-db.mjs` | `node scripts/inspect-db.mjs` | Imprime conteos y primeros usuarios de la BD local. Útil para validar estado post-sync. |
+| `scripts/verify-data.mjs` | `node scripts/verify-data.mjs` | Lista detallada de vendedores, clientes y ventas sincronizados. |
+
+### Cómo probar el flujo completo
+
+```bash
+# 1. (Una sola vez) Configurar credenciales Profit en la empresa
+npm run profit:configure
+
+# 2. Validar Prisma + compilar backend
+npm run prisma:validate
+npm run build
+
+# 3a. Smoke test sin servidor Profit (usa mock)
+npm run test:profit
+
+# 3b. Smoke test HTTP con servidor en pie
+npm start &
+npm run test:http
+
+# 4. Inspeccionar resultados
+node scripts/inspect-db.mjs
+node scripts/verify-data.mjs
+```
+
+### Resultados verificados
+
+En el entorno actual (servidor `SRVBDPROFITBK` accesible):
+
+- `sync/test` → 11 vendedores, 2149 clientes, 48531 ventas, rango 2022-01-22 a 2026-08-18.
+- `sync/all` → insertó 2149 clientes y 5567 ventas; idempotente en segunda corrida.
+- `sync/sellers` → 11 vendedores (mezcla nuevos + actualizados según `codProfit`).
+- En BD local: 2078 `ClienteCorporativo` (RIFs consolidados), 2153 `ClienteEmpresa`, 5570 `VentaCliente`.
