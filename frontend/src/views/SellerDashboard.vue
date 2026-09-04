@@ -37,8 +37,13 @@ const cuentasComerciales = ref<CuentaComercial[]>([]);
 const newProspect = ref({ razonSocial: '', rif: '', titulo: '', rubro: '', direccion: '', telefono: '', etapa: 'NUEVO' as EtapaOportunidad, valorEstimado: 0, fechaContacto: new Date().toISOString().slice(0, 10), vendedorNombre: '', cuentaComercialId: '' });
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const weeks = computed(() => [...new Set(clients.value.flatMap((client) => client.visitas.map((visit) => visit.semana)))].sort((a, b) => a - b));
-const months = computed(() => [...new Set(clients.value.flatMap((client) => client.ventas.map((sale) => sale.mes)))].sort((first, second) => new Date(`1 ${first}`).getTime() - new Date(`1 ${second}`).getTime()));
-const sales = computed(() => months.value.map((month) => clients.value.flatMap((client) => client.ventas).filter((sale) => sale.mes === month).reduce((total, sale) => total + sale.monto, 0)));
+// Fuente única de verdad: SIEMPRE 9 meses continuos anclados al "ahora",
+// ordenados del más antiguo (índice 0, izquierda) al más reciente (índice 8).
+// Se rellena con 0 los meses sin ventas para que el histograma se vea continuo.
+const months = computed<string[]>(() => buildLastNineMonths());
+
+const sales = computed<number[]>(() => months.value.map((month) => clients.value.flatMap((client) => client.ventas).filter((sale) => sale.mes === month).reduce((total, sale) => total + sale.monto, 0)));
+const units = computed<number[]>(() => months.value.map((month) => clients.value.flatMap((client) => client.ventas).filter((sale) => sale.mes === month).reduce((total, sale) => total + sale.unidades, 0)));
 const routeClients = computed(() => clients.value.filter((client) => client.visitas.some((visit) => visit.semana === selectedWeek.value && visit.dia === selectedDay.value)));
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -78,6 +83,16 @@ const clientSales = computed<number[]>(() => {
     source.ventas
       .filter((sale) => sale.mes === month)
       .reduce((total, sale) => total + sale.monto, 0),
+  );
+});
+
+const clientUnits = computed<number[]>(() => {
+  const source = selectedClient.value;
+  if (!source) return units.value;
+  return clientMonths.value.map((month) =>
+    source.ventas
+      .filter((sale) => sale.mes === month)
+      .reduce((total, sale) => total + sale.unidades, 0),
   );
 });
 
@@ -238,6 +253,7 @@ onMounted(async () => {
           id="sales-histogram-section"
           :months="clientMonths"
           :sales="clientSales"
+          :units="clientUnits"
           v-model:selected-month="selectedMonth"
           :selected-month-total="selectedMonthTotal"
           :selected-month-units="selectedMonthUnits"
