@@ -270,3 +270,78 @@ Solo si resulta necesario:
 5. Confirmar si una fila de `CRM_VENTAS` representa una factura o una línea de factura.
 6. Confirmar si `SemanaDelMes` se copia directamente o se calcula desde `fecha`.
 7. Confirmar el formato final del campo `mes` en `VentaCliente`.
+
+## Decisiones adoptadas durante la implementación
+
+1. **`cod_profit` se guarda en `UsuarioEmpresa`** (no en `Usuario`) con unicidad
+   `(empresaId, codProfit)`. Permite multi-tenant sin contaminar `Usuario` con un
+   campo específico de Profit y respeta el dominio del pivote.
+2. **Nombres duplicados de vendedor**: la idempotencia la da `codProfit`, no el
+   nombre. Si dos vendedores comparten nombre y, tras sanitizar, sus correos
+   coinciden, el segundo insertará en `UsuarioEmpresa` con un nuevo Usuario.
+   Conservador; en la práctica Profit raramente repite nombres.
+3. **Huso horario**: el backend calcula el rango móvil con la hora del servidor
+   donde corre Node. Se documenta que Profit y backend deben compartir zona
+   horaria para evitar desfases de horas en la frontera del día.
+4. **`num_nde`**: ya está modelado como único por `(clienteEmpresaId, documento)`.
+   Se respeta esa unicidad. Múltiples líneas de la misma factura se agregan
+   sumando `unidades` y `monto_neto`.
+5. **Fila de `CRM_VENTAS`**: se trata como **línea de factura**. La unicidad del
+   modelo local fuerza a agregarlas. Si Profit representa facturas (no líneas),
+   el resultado es idéntico para los casos 1-a-1.
+6. **`SemanaDelMes`**: se **calcula desde `fecha`** con la regla
+   `1-7 = 1, 8-14 = 2, 15-21 = 3, 22-31 = 4`. La columna `SemanaDelMes` de
+   Profit se ignora por consistencia.
+7. **`mes`**: string con formato `YYYY-MM` (ej. `2026-08`), estable para
+   indexar y ordenar. Calculado con la hora local del servidor.
+
+## Estado de implementación
+
+- ✅ `prisma/schema.prisma`: añadida columna `codProfit` (nullable, único por
+  empresa) en `UsuarioEmpresa`.
+- ✅ `prisma/migrations/20260904103849_add_usuario_empresa_cod_profit`: migración
+  aplicada contra `dev.db` con `prisma migrate deploy`. Cliente Prisma
+  regenerado.
+- ✅ `services/profitSync.service.ts`: reescrito con
+  `testConect`, `syncSellersForEmpresa`, `syncClientesForEmpresa`,
+  `syncVentasForEmpresa`, `syncAllForEmpresa`. Pool MSSQL cerrado en `finally`,
+  transacciones por fila, errores por fila no abortan la sync.
+- ✅ `controllers/profit.controller.ts`: respuestas alineadas al contrato del
+  frontend (`{ success, empresa?, inserted?, updated?, error? }`).
+- ✅ `routes/profit.routes.ts`: registradas rutas individuales
+  `/sync/test`, `/sync/sellers`, `/sync/clientes`, `/sync/ventas`, `/sync/all`.
+- ✅ `docs/openapi.ts`: añadidos `sync/test` y `sync/sellers`; ajustados
+  resúmenes de los existentes.
+- ✅ `npm run prisma:validate` y `npm run build` pasan sin errores.
+- ✅ Smoke test: el servidor arranca y publica todas las rutas Profit en
+  `/api/docs.json`.
+
+## Cómo probar
+
+```bash
+# 1. Validar esquema
+npm run prisma:validate
+
+# 2. Compilar
+npm run build
+
+# 3. Arrancar
+npm start
+
+# 4. (Opcional) diagnóstico sin escritura
+curl -X POST http://localhost:4500/api/profit/sync/test \
+  -H "Cookie: access_token=<jwt MASTER/ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{"empresaId":"<uuid>"}'
+
+# 5. Sincronización completa
+curl -X POST http://localhost:4500/api/profit/sync/all \
+  -H "Cookie: access_token=<jwt MASTER/ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{"empresaId":"<uuid>"}'
+```
+
+> El servidor de pruebas usa `SRVBDPROFITBK / solicitudweb`. La base de
+> pruebas puede no estar accesible desde el entorno donde se ejecute la
+> batería de tests; en ese caso, los endpoints devolverán `ok=false` con el
+> motivo en `error` y los `stats.read = 0` sin causar daño a la BD local.
