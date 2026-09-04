@@ -43,7 +43,31 @@ const selectedMonthSales = computed(() => clients.value.flatMap((client) => clie
 const selectedMonthTotal = computed(() => selectedMonthSales.value.reduce((total, sale) => total + sale.monto, 0));
 const selectedMonthUnits = computed(() => selectedMonthSales.value.reduce((total, sale) => total + sale.unidades, 0));
 const weeklyBreakdown = computed(() => [1, 2, 3, 4].map((week) => selectedMonthSales.value.filter((sale) => sale.semana === week).reduce((total, sale) => total + sale.monto, 0)));
-const filteredClients = computed(() => clients.value.filter((client) => `${client.razonSocial} ${client.rif}`.toLowerCase().includes(search.value.toLowerCase())));
+const filteredClients = computed(() => {
+  const query = search.value.trim().toLowerCase();
+  if (!query) return clients.value;
+
+  // Normalizamos el RIF quitando guiones y espacios para que el vendedor
+  // pueda buscar "j12345678" y encontrar "J-12345678-9" sin fricción.
+  const normalize = (value: string) =>
+    value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const normalizedQuery = normalize(query).replace(/[^a-z0-9]/g, '');
+
+  return clients.value.filter((client) => {
+    const razonSocial = normalize(client.razonSocial ?? '');
+    const rifNormalized = normalize(client.rif ?? '').replace(/[^a-z0-9]/g, '');
+    const estado = normalize(client.estado ?? '');
+    const vendedor = normalize((client as Client).vendedor ?? '');
+
+    return (
+      razonSocial.includes(query) ||
+      estado.includes(query) ||
+      vendedor.includes(query) ||
+      rifNormalized.includes(normalizedQuery)
+    );
+  });
+});
 
 async function checkIn(client: Client) {
   checkingIn.value = client.id;

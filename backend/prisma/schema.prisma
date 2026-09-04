@@ -107,6 +107,10 @@ model UsuarioEmpresa {
   id        String   @id @default(uuid())
   usuarioId String
   empresaId String
+  /// Código del vendedor en Profit Plus (CRM_VENDEDOR.cod). Permite idempotencia
+  /// durante la sincronización y re-vinculación si el correo del vendedor cambia.
+  /// Único por empresa para soportar multi-tenant.
+  codProfit String?
   rol       String   @default("VENDEDOR")
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -116,6 +120,7 @@ model UsuarioEmpresa {
   empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, empresaId])
+  @@unique([empresaId, codProfit])
   @@index([empresaId])
   @@index([usuarioId])
 }

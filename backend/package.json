@@ -12,7 +12,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "prisma db seed",
-    "prisma:repair-accounts": "tsx prisma/repair-commercial-accounts.ts"
+    "prisma:repair-accounts": "tsx prisma/repair-commercial-accounts.ts",
+    "test:profit": "node scripts/test-profit-sync.mjs",
+    "test:http": "node scripts/test-http.mjs",
+    "profit:configure": "node scripts/configure-profit.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

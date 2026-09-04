@@ -62,4 +62,5 @@ Thumbs.db
 *.temp
 .screenshots/
 .project/
+.mssql-shim/
 
