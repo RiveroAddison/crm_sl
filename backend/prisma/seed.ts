@@ -60,11 +60,48 @@ async function main() {
     },
   });
 
+  // 5. Crear usuario Admin de prueba.
+  const usuarioAdmin = await prisma.usuario.create({
+    data: {
+      nombre: 'Admin San Luis',
+      email: 'admin@sanluis.com',
+      password: hashedPassword,
+      activo: true,
+    },
+  });
+
+  await prisma.usuarioEmpresa.create({
+    data: {
+      usuarioId: usuarioAdmin.id,
+      empresaId: empresa.id,
+      rol: 'ADMIN',
+    },
+  });
+
+  // 6. Crear usuario Vendedor de prueba.
+  const usuarioVendedor = await prisma.usuario.create({
+    data: {
+      nombre: 'Vendedor Test',
+      email: 'vendedor@sanluis.com',
+      password: hashedPassword,
+      activo: true,
+    },
+  });
+
+  await prisma.usuarioEmpresa.create({
+    data: {
+      usuarioId: usuarioVendedor.id,
+      empresaId: empresa.id,
+      rol: 'VENDEDOR',
+    },
+  });
+
   console.log('✅ Seed completado con éxito:');
-  console.log(`- Master: ${usuarioMaster.email}`);
-  console.log(`- Empresa creada y asociada: ${empresa.nombre}`);
+  console.log(`- Master: ${usuarioMaster.email} (contraseña: admin1234)`);
+  console.log(`- Admin: ${usuarioAdmin.email} (contraseña: admin1234)`);
+  console.log(`- Vendedor: ${usuarioVendedor.email} (contraseña: admin1234)`);
+  console.log(`- Empresa: ${empresa.nombre}`);
   console.log(`- Rubro: ${empresa.rubro}`);
-  console.log('- Rol: MASTER');
 }
 
 main()

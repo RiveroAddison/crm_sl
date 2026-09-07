@@ -67,7 +67,9 @@ const include = {
 export async function listLeads(context: RequestContext) {
   const leads = await prisma.lead.findMany({
     where: {
-      empresaId: context.tenantId,
+      // MASTER ve todos, otros solo su empresa
+      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {}),
+      // VENDEDOR solo ve sus leads
       ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {})
     },
     include,
@@ -178,11 +180,20 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
   if (context.rol === 'VENDEDOR') throw new Error('No tienes permiso para aprobar leads');
 
   const lead = await prisma.lead.findFirst({
-    where: { id, empresaId: context.tenantId },
+    where: {
+      id,
+      // MASTER puede aprobar cualquiera, ADMIN/VENDEDOR solo su empresa
+      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {})
+    },
     include: { vendedor: true, cuentaComercial: true }
   });
   if (!lead) throw new Error('Lead no encontrado');
   if (lead.estado === 'APROBADO') throw new Error('El lead ya fue aprobado');
+
+  // ADMIN solo puede aprobar leads de su empresa
+  if (context.rol === 'ADMIN' && lead.empresaId !== context.tenantId) {
+    throw new Error('No puedes aprobar leads de otra empresa');
+  }
 
   const rechazoExistente = await prisma.leadRechazo.findUnique({
     where: { leadId_rubro: { leadId: id, rubro: input.rubro } }
@@ -264,9 +275,18 @@ export async function rechazarLead(context: RequestContext, id: string, input: R
   if (context.rol === 'VENDEDOR') throw new Error('No tienes permiso para rechazar leads');
 
   const lead = await prisma.lead.findFirst({
-    where: { id, empresaId: context.tenantId }
+    where: {
+      id,
+      // MASTER puede rechazar cualquiera, ADMIN solo su empresa
+      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {})
+    }
   });
   if (!lead) throw new Error('Lead no encontrado');
+
+  // ADMIN solo puede rechazar leads de su empresa
+  if (context.rol === 'ADMIN' && lead.empresaId !== context.tenantId) {
+    throw new Error('No puedes rechazar leads de otra empresa');
+  }
 
   return prisma.$transaction(async (tx) => {
     await tx.leadRechazo.create({

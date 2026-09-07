@@ -1688,6 +1688,8 @@ onBeforeUnmount(() => {
     :loading="leads.loading"
     :error="leadActionError"
     :user-role="auth.user?.rol || ''"
+    :user-empresa-id="auth.tenantId || ''"
+    :user-empresa-rubro="auth.empresa?.rubro || ''"
     @submit="handleApproveLead"
     @close="showApproveModal = false; selectedLeadForAction = null"
   />

@@ -9,6 +9,8 @@ const props = defineProps<{
   loading: boolean;
   error: string;
   userRole: string;
+  userEmpresaId: string;
+  userEmpresaRubro: string;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +28,8 @@ const vendedorAsignadoId = ref('');
 const tiposCliente = ref<TipoCliente[]>([]);
 const vendedores = ref<Array<{ id: string; nombre: string }>>([]);
 
-const rubros = [
+// MASTER ve todos los rubros, ADMIN solo los de su empresa
+const allRubros = [
   { value: 'COMBUSTIBLE', label: 'Combustible' },
   { value: 'LUBRICANTES', label: 'Lubricantes' },
   { value: 'AUTOPARTES', label: 'Autopartes' },
@@ -34,6 +37,23 @@ const rubros = [
   { value: 'ALIMENTOS_BALANCEADOS', label: 'Alimentos Balanceados' },
   { value: 'ALIMENTOS_CONGELADOS', label: 'Alimentos Congelados' },
 ];
+
+// Mapeo de rubro de empresa a valor del select
+const rubroEmpresaToValue: Record<string, string> = {
+  'Combustible': 'COMBUSTIBLE',
+  'Lubricantes': 'LUBRICANTES',
+  'Autopartes': 'AUTOPARTES',
+  'Transporte': 'TRANSPORTE',
+  'Alimentos Balanceados': 'ALIMENTOS_BALANCEADOS',
+  'Alimentos Congelados': 'ALIMENTOS_CONGELADOS',
+};
+
+const rubros = computed(() => {
+  if (props.userRole === 'MASTER') return allRubros;
+  // ADMIN: solo el rubro de su empresa
+  const rubroValue = rubroEmpresaToValue[props.userEmpresaRubro] || 'COMBUSTIBLE';
+  return allRubros.filter(r => r.value === rubroValue);
+});
 
 const isValid = computed(() => {
   return (
@@ -58,9 +78,11 @@ async function cargarDatos() {
     console.error('Error al cargar tipos de cliente:', error);
   }
 
-  if (props.lead.empresaId) {
+  // ADMIN: vendedores de su empresa. MASTER: vendedores de la empresa del lead
+  const empresaIdParaVendedores = props.userRole === 'MASTER' ? props.lead.empresaId : props.userEmpresaId;
+  if (empresaIdParaVendedores) {
     try {
-      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(props.lead.empresaId);
+      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(empresaIdParaVendedores);
       vendedores.value = vendedoresResponse;
     } catch (error) {
       console.error('Error al cargar vendedores:', error);
