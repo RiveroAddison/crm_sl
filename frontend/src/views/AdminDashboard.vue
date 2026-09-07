@@ -405,19 +405,28 @@ async function addActividadOportunidad(oportunidadId: string, input: CreateActiv
   await prospects.addActividad(oportunidadId, input);
 }
 
-function getEtapasPermitidas(etapaActual: EtapaOportunidad): { value: string; label: string }[] {
+function getEtapasPermitidas(etapaActual: EtapaOportunidad): { value: string; label: string; current?: boolean }[] {
+  const actual = statuses.find(s => s.value === etapaActual);
+  const currentLabel = actual ? actual.label : etapaActual;
+  
   switch (etapaActual) {
     case 'NUEVO':
-      return [{ value: 'NEGOCIACION', label: 'Mover a: En Negociación' }];
+      return [
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+        { value: 'NEGOCIACION', label: '→ En Negociación' },
+      ];
     case 'NEGOCIACION':
       return [
-        { value: 'CONVERTIDO', label: 'Aprobar (Convertir)' },
-        { value: 'RECHAZADO', label: 'Rechazar' },
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+        { value: 'CONVERTIDO', label: '→ Aprobar (Convertir)' },
+        { value: 'RECHAZADO', label: '→ Rechazar' },
       ];
     case 'CONVERTIDO':
     case 'RECHAZADO':
     default:
-      return [];
+      return [
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+      ];
   }
 }
 
@@ -825,21 +834,12 @@ onBeforeUnmount(() => {
                 <!-- Stage Selector Quick Action -->
                 <div class="mt-2.5">
                   <select
-                    v-if="getEtapasPermitidas(p.etapa).length > 0"
                     :value="p.etapa"
                     class="w-full text-[11px] bg-slate-50 border border-slate-200 rounded-md px-2 py-1 outline-none text-slate-700 font-medium hover:bg-slate-100 focus:border-[#073b73] transition-colors"
-                    @change="prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
+                    @change="($event.target as HTMLSelectElement).value !== p.etapa && prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
                   >
-                    <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value">{{ st.label }}</option>
+                    <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value" :disabled="st.current">{{ st.label }}</option>
                   </select>
-                  <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full block text-center"
-                    :class="{
-                      'bg-emerald-100 text-emerald-700': p.etapa === 'CONVERTIDO',
-                      'bg-red-100 text-red-700': p.etapa === 'RECHAZADO'
-                    }"
-                  >
-                    {{ p.etapa === 'CONVERTIDO' ? '✅ Convertido' : '❌ Rechazado' }}
-                  </span>
                 </div>
 
                 <!-- Activities Toggle -->
@@ -901,21 +901,12 @@ onBeforeUnmount(() => {
                   </td>
                   <td class="px-4 py-3.5">
                     <select
-                      v-if="getEtapasPermitidas(p.etapa).length > 0"
                       :value="p.etapa"
                       class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-semibold outline-none focus:border-[#073b73]"
-                      @change="prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
+                      @change="($event.target as HTMLSelectElement).value !== p.etapa && prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
                     >
-                      <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value">{{ st.label }}</option>
+                      <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value" :disabled="st.current">{{ st.label }}</option>
                     </select>
-                    <span v-else class="text-xs font-bold px-2.5 py-1 rounded-full"
-                      :class="{
-                        'bg-emerald-100 text-emerald-700': p.etapa === 'CONVERTIDO',
-                        'bg-red-100 text-red-700': p.etapa === 'RECHAZADO'
-                      }"
-                    >
-                      {{ p.etapa === 'CONVERTIDO' ? '✅ Convertido' : '❌ Rechazado' }}
-                    </span>
                   </td>
                   <td class="px-4 py-3.5 text-right font-extrabold text-emerald-700 text-sm">
                     {{ formatCurrency(p.valorEstimado) }}
