@@ -11,7 +11,7 @@ const stageSchema = z.object({ etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTID
 function response(prospect: any) { return { ...prospect, fechaContacto: prospect.fechaContacto.toISOString().slice(0, 10) }; }
 
 export async function list(req: Request, res: Response) {
-  try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); const items = await prisma.oportunidad.findMany({ where: { empresaId: context.tenantId, ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {}) }, orderBy: { createdAt: 'desc' } }); return res.json({ success: true, data: items.map(response), error: '' }); }
+  try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); const items = await prisma.oportunidad.findMany({ where: { empresaId: context.tenantId, ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {}) }, include: { actividades: { include: { autor: { select: { id: true, nombre: true } } }, orderBy: { fecha: 'desc' } } }, orderBy: { createdAt: 'desc' } }); return res.json({ success: true, data: items.map(response), error: '' }); }
   catch { return res.status(500).json({ success: false, data: null, error: 'No fue posible cargar los prospectos' }); }
 }
 

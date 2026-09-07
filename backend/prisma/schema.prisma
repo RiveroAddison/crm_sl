@@ -75,6 +75,7 @@ model Usuario {
   clientesEmpresa ClienteEmpresa[]
   refreshTokens   RefreshToken[]
   actividadesLead ActividadLead[]
+  actividadesOportunidad ActividadOportunidad[]
 }
 
 /// Modelo para el catálogo de empresas del grupo San Luis y sus credenciales de Profit
@@ -273,6 +274,7 @@ model Oportunidad {
   vendedor             Usuario         @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   clienteCorporativo   ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
   lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  actividades          ActividadOportunidad[]
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, etapa])
@@ -353,6 +355,25 @@ model ActividadLead {
 
   @@index([leadId, fecha])
   @@index([empresaId, leadId])
+}
+
+/// Actividades registradas en una oportunidad (bitácora de seguimiento)
+model ActividadOportunidad {
+  id              String              @id @default(uuid())
+  oportunidadId   String
+  empresaId       String
+  autorId         String
+  tipo            TipoActividadLead
+  descripcion     String
+  fecha           DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  oportunidad     Oportunidad         @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  autor           Usuario             @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([oportunidadId, fecha])
+  @@index([empresaId, oportunidadId])
 }
 
 /// Rechazos de leads por rubro

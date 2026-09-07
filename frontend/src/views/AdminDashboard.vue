@@ -8,10 +8,11 @@ import { usePedidosStore } from '../stores/pedidos';
 import { useAdminMasterStore } from '../stores/adminMaster';
 import { useVisitasStore } from '../stores/visitas';
 import { cuentasComercialesApi } from '../services';
-import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput } from '../domain';
+import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput, ActividadOportunidad, CreateActividadOportunidadInput } from '../domain';
 import ApproveLeadModal from '../components/common/ApproveLeadModal.vue';
 import RejectLeadModal from '../components/common/RejectLeadModal.vue';
 import LeadCaptureModal from '../components/common/LeadCaptureModal.vue';
+import ActivityTimeline from '../components/common/ActivityTimeline.vue';
 
 const auth = useAuthStore();
 const activeView = ref<'kanban' | 'table' | 'map' | 'leads' | 'pedidos' | 'usuarios' | 'empresas' | 'profit-sync'>('kanban');
@@ -31,6 +32,8 @@ const showRejectModal = ref(false);
 const selectedLeadForAction = ref<Lead | null>(null);
 const leadActionError = ref('');
 const actividadesExpandidas = ref<string[]>([]);
+const actividadesOportunidadExpandidas = ref<string[]>([]);
+const actividadesOportunidadLoading = ref<string[]>([]);
 
 const editingUserId = ref<string | null>(null);
 const userForm = ref({
@@ -379,6 +382,27 @@ function toggleActividades(leadId: string) {
   } else {
     actividadesExpandidas.value.splice(index, 1);
   }
+}
+
+function toggleActividadesOportunidad(oportunidadId: string) {
+  const index = actividadesOportunidadExpandidas.value.indexOf(oportunidadId);
+  if (index === -1) {
+    actividadesOportunidadExpandidas.value.push(oportunidadId);
+  } else {
+    actividadesOportunidadExpandidas.value.splice(index, 1);
+  }
+}
+
+function isActividadesOportunidadExpanded(oportunidadId: string) {
+  return actividadesOportunidadExpandidas.value.includes(oportunidadId);
+}
+
+function isActividadesOportunidadLoading(oportunidadId: string) {
+  return actividadesOportunidadLoading.value.includes(oportunidadId);
+}
+
+async function addActividadOportunidad(oportunidadId: string, input: CreateActividadOportunidadInput) {
+  await prospects.addActividad(oportunidadId, input);
 }
 
 function formatDate(dateString: string) {
@@ -792,6 +816,26 @@ onBeforeUnmount(() => {
                     <option v-for="st in statuses" :key="st.value" :value="st.value">Mover a: {{ st.label }}</option>
                   </select>
                 </div>
+
+                <!-- Activities Toggle -->
+                <button
+                  type="button"
+                  class="mt-2 w-full text-[10px] font-bold text-slate-500 hover:text-[#073b73] transition-colors flex items-center justify-center gap-1"
+                  @click="toggleActividadesOportunidad(p.id)"
+                >
+                  <span>📋</span>
+                  <span>{{ (p.actividades?.length || 0) }} actividades</span>
+                  <span class="text-[8px]">{{ isActividadesOportunidadExpanded(p.id) ? '▲' : '▼' }}</span>
+                </button>
+
+                <!-- Activities Timeline -->
+                <div v-if="isActividadesOportunidadExpanded(p.id)" class="mt-2 pt-2 border-t border-slate-100">
+                  <ActivityTimeline
+                    :actividades="p.actividades || []"
+                    :allow-add="true"
+                    @add="(input) => addActividadOportunidad(p.id, input)"
+                  />
+                </div>
               </article>
 
               <div
@@ -845,13 +889,31 @@ onBeforeUnmount(() => {
                   </td>
                   <td class="px-4 py-3.5 font-medium text-slate-600">{{ p.vendedorNombre }}</td>
                   <td class="px-4 py-3.5 text-center">
-                    <button
-                      class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-semibold transition-colors"
-                      title="Eliminar prospecto"
-                      @click="prospects.remove(p.id)"
-                    >
-                      Eliminar
-                    </button>
+                    <div class="flex items-center justify-center gap-2">
+                      <button
+                        class="text-[#073b73] hover:bg-[#073b73]/10 px-2 py-1 rounded text-xs font-semibold transition-colors"
+                        title="Ver actividades"
+                        @click="toggleActividadesOportunidad(p.id)"
+                      >
+                        📋 {{ p.actividades?.length || 0 }}
+                      </button>
+                      <button
+                        class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-semibold transition-colors"
+                        title="Eliminar prospecto"
+                        @click="prospects.remove(p.id)"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="isActividadesOportunidadExpanded(p.id)" :key="p.id + '-actividades'">
+                  <td colspan="7" class="px-4 py-3 bg-slate-50">
+                    <ActivityTimeline
+                      :actividades="p.actividades || []"
+                      :allow-add="true"
+                      @add="(input) => addActividadOportunidad(p.id, input)"
+                    />
                   </td>
                 </tr>
               </tbody>

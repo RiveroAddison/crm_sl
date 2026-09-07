@@ -1,8 +1,8 @@
 // filepath: src/stores/prospects.ts
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { prospectosApi } from '../services';
-import type { CrearOportunidadForm, EtapaOportunidad, Oportunidad } from '../domain';
+import { prospectosApi, actividadesOportunidadesApi } from '../services';
+import type { ActividadOportunidad, CreateActividadOportunidadInput, CrearOportunidadForm, EtapaOportunidad, Oportunidad } from '../domain';
 
 export const useProspectsStore = defineStore('prospects', () => {
   const prospectos = ref<Oportunidad[]>([]);
@@ -73,6 +73,30 @@ export const useProspectsStore = defineStore('prospects', () => {
     }
   }
 
+  async function loadActividades(oportunidadId: string): Promise<ActividadOportunidad[]> {
+    try {
+      return await actividadesOportunidadesApi.list(oportunidadId);
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'No fue posible cargar las actividades';
+      return [];
+    }
+  }
+
+  async function addActividad(oportunidadId: string, input: CreateActividadOportunidadInput): Promise<ActividadOportunidad | null> {
+    try {
+      const actividad = await actividadesOportunidadesApi.create(oportunidadId, input);
+      const idx = prospectos.value.findIndex((p) => p.id === oportunidadId);
+      if (idx !== -1) {
+        const actual = prospectos.value[idx];
+        prospectos.value[idx] = { ...actual, actividades: [actividad, ...(actual.actividades || [])] };
+      }
+      return actividad;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'No fue posible crear la actividad';
+      return null;
+    }
+  }
+
   /** Derivados. */
   const pipelineValue = computed(() =>
     prospectos.value
@@ -102,5 +126,7 @@ export const useProspectsStore = defineStore('prospects', () => {
     create,
     updateStage,
     remove,
+    loadActividades,
+    addActividad,
   };
 });
