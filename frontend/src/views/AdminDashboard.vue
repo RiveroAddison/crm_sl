@@ -217,6 +217,32 @@ async function runSyncAll() {
   }
 }
 
+const grupoEmpresaId = ref('');
+const syncGrupoRunning = ref(false);
+const syncGrupoResult = ref<{ ok: boolean; created: number; updated: number; unchanged: number; errors: string[] } | null>(null);
+
+async function runSyncEmpresasFromGrupo() {
+  if (!grupoEmpresaId.value) {
+    alert('Selecciona la empresa GRUPO');
+    return;
+  }
+  syncGrupoRunning.value = true;
+  syncGrupoResult.value = null;
+  try {
+    const res = await adminMaster.syncEmpresasFromGrupo(grupoEmpresaId.value);
+    syncGrupoResult.value = res;
+    if (res.ok) {
+      alert(`¡Empresas sincronizadas!\nCreadas: ${res.created}\nActualizadas: ${res.updated}\nSin cambios: ${res.unchanged}`);
+    } else {
+      alert(`Sincronización completada con errores:\n${res.errors.join('\n')}`);
+    }
+  } catch (err) {
+    alert(err instanceof Error ? err.message : 'Error al sincronizar empresas');
+  } finally {
+    syncGrupoRunning.value = false;
+  }
+}
+
 const visits = ref<VisitaGps[]>([]);
 const mapElement = ref<HTMLElement | null>(null);
 let map: L.Map | null = null;
@@ -1376,6 +1402,38 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Sync Empresas desde Grupo -->
+            <div class="border border-amber-200 bg-amber-50/40 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                  <span>🏢</span>
+                  <h3>Sincronizar Empresas desde Grupo</h3>
+                </div>
+                <p class="text-xs text-slate-600 mt-1">Importa empresas desde ad_grup.dbo.Tempresas. Crea/actualiza cada empresa con sus credenciales Profit.</p>
+                <div class="mt-2">
+                  <label class="text-[10px] text-slate-500 font-medium">Empresa GRUPO (origen):</label>
+                  <select v-model="grupoEmpresaId" class="w-full text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 mt-0.5 outline-none">
+                    <option value="">Seleccionar empresa GRUPO</option>
+                    <option v-for="e in adminMaster.empresas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-2"
+                :disabled="syncGrupoRunning || !grupoEmpresaId"
+                @click="runSyncEmpresasFromGrupo"
+              >
+                <span>🔄</span>
+                <span>{{ syncGrupoRunning ? 'Sincronizando...' : 'Sincronizar Empresas' }}</span>
+              </button>
+              <div v-if="syncGrupoResult" class="text-[10px] text-slate-600 mt-1 space-y-0.5">
+                <p>Creadas: <span class="font-bold text-emerald-700">{{ syncGrupoResult.created }}</span> |
+                   Actualizadas: <span class="font-bold text-blue-700">{{ syncGrupoResult.updated }}</span> |
+                   Sin cambios: <span class="font-bold text-slate-500">{{ syncGrupoResult.unchanged }}</span></p>
+                <p v-if="syncGrupoResult.errors.length" class="text-red-600">Errores: {{ syncGrupoResult.errors.join('; ') }}</p>
+              </div>
+            </div>
+
             <!-- Sync Card 1 -->
             <div class="border border-blue-200 bg-blue-50/40 rounded-xl p-4 space-y-3 flex flex-col justify-between">
               <div>

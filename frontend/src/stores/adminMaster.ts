@@ -104,6 +104,13 @@ export const useAdminMasterStore = defineStore('adminMaster', () => {
     return res;
   }
 
+  // --- Empresas desde Grupo ---
+  async function syncEmpresasFromGrupo(grupoEmpresaId: string) {
+    const res = await empresasApi.syncFromGrupo(grupoEmpresaId);
+    await loadData(true);
+    return res;
+  }
+
   return {
     usuarios,
     empresas,
@@ -123,5 +130,6 @@ export const useAdminMasterStore = defineStore('adminMaster', () => {
     syncClientes,
     syncVentas,
     syncAll,
+    syncEmpresasFromGrupo,
   };
 });

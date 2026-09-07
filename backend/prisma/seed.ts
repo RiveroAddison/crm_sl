@@ -24,24 +24,22 @@ async function main() {
     prisma.empresa.deleteMany(),
   ]);
 
-  // 1. Encriptar la contraseña del usuario master.
   const hashedPassword = await bcrypt.hash('admin1234', 10);
 
-  // 2. Crear la única empresa del seed.
-  const empresa = await prisma.empresa.create({
+  // Empresa GRUPO: credenciales del servidor central ad_grup
+  const empresaGrupo = await prisma.empresa.create({
     data: {
-      nombre: 'San Luis',
-      rif: 'J-30533405-6',
-      rubro: 'Combustible',
+      nombre: 'GRUPO',
+      rif: null,
+      rubro: null,
       profitDbHost: 'SRVBDPROFITBK',
-      profitDbName: 'AD_DIST',
+      profitDbName: 'ad_grup',
       profitDbUser: 'solicitudweb',
       profitDbPassword: 'solicitudweb',
       activo: true,
     },
   });
 
-  // 3. Crear el único usuario del seed.
   const usuarioMaster = await prisma.usuario.create({
     data: {
       nombre: 'Master',
@@ -51,57 +49,19 @@ async function main() {
     },
   });
 
-  // 4. Asociar el usuario master a la empresa.
   await prisma.usuarioEmpresa.create({
     data: {
       usuarioId: usuarioMaster.id,
-      empresaId: empresa.id,
+      empresaId: empresaGrupo.id,
       rol: 'MASTER',
-    },
-  });
-
-  // 5. Crear usuario Admin de prueba.
-  const usuarioAdmin = await prisma.usuario.create({
-    data: {
-      nombre: 'Admin San Luis',
-      email: 'admin@sanluis.com',
-      password: hashedPassword,
-      activo: true,
-    },
-  });
-
-  await prisma.usuarioEmpresa.create({
-    data: {
-      usuarioId: usuarioAdmin.id,
-      empresaId: empresa.id,
-      rol: 'ADMIN',
-    },
-  });
-
-  // 6. Crear usuario Vendedor de prueba.
-  const usuarioVendedor = await prisma.usuario.create({
-    data: {
-      nombre: 'Vendedor Test',
-      email: 'vendedor@sanluis.com',
-      password: hashedPassword,
-      activo: true,
-    },
-  });
-
-  await prisma.usuarioEmpresa.create({
-    data: {
-      usuarioId: usuarioVendedor.id,
-      empresaId: empresa.id,
-      rol: 'VENDEDOR',
     },
   });
 
   console.log('✅ Seed completado con éxito:');
   console.log(`- Master: ${usuarioMaster.email} (contraseña: admin1234)`);
-  console.log(`- Admin: ${usuarioAdmin.email} (contraseña: admin1234)`);
-  console.log(`- Vendedor: ${usuarioVendedor.email} (contraseña: admin1234)`);
-  console.log(`- Empresa: ${empresa.nombre}`);
-  console.log(`- Rubro: ${empresa.rubro}`);
+  console.log(`- Empresa GRUPO: ${empresaGrupo.nombre} (ID: ${empresaGrupo.id})`);
+  console.log(`- Profit Host: ${empresaGrupo.profitDbHost}`);
+  console.log(`- Profit DB: ${empresaGrupo.profitDbName}`);
 }
 
 main()

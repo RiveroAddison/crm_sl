@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import sql from 'mssql';
 import { prisma } from '../lib/prisma.js';
-import { getMasterOrAdminContext } from '../middleware/auth.js';
+import { getMasterOrAdminContext, getMasterContext } from '../middleware/auth.js';
+import { syncEmpresasFromGrupo } from '../services/empresas.service.js';
 
 const empresaSchema = z.object({
   nombre: z.string().min(1).max(100),
@@ -161,6 +162,31 @@ export async function remove(req: Request, res: Response) {
     } catch {
       return res.status(500).json({ success: false, data: null, error: 'Error al desactivar la empresa' });
     }
+  }
+}
+
+export async function syncFromGrupo(req: Request, res: Response) {
+  try {
+    const context = await getMasterContext(req);
+    if (!context) {
+      return res.status(403).json({ success: false, data: null, error: 'Solo MASTER puede sincronizar empresas' });
+    }
+
+    const { grupoEmpresaId } = req.body;
+    if (!grupoEmpresaId || typeof grupoEmpresaId !== 'string') {
+      return res.status(400).json({ success: false, data: null, error: 'grupoEmpresaId es requerido' });
+    }
+
+    const result = await syncEmpresasFromGrupo(grupoEmpresaId);
+
+    return res.json({
+      success: true,
+      data: result,
+      error: ''
+    });
+  } catch (error) {
+    console.error('Error al sincronizar empresas desde grupo:', error);
+    return res.status(500).json({ success: false, data: null, error: 'Error al sincronizar empresas' });
   }
 }
 
