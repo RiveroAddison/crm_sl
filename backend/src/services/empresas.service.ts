@@ -63,7 +63,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
   try {
     pool = await sql.connect(connectionConfig(grupo));
     const request = pool.request();
-    const rs = await request.query('SELECT id_emp, nombre, riff FROM Tempresas');
+    const rs = await request.query('SELECT cod_emp, nombre, riff FROM Tempresas');
 
     if (!rs.recordset || rs.recordset.length === 0) {
       result.ok = true;
@@ -73,12 +73,12 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
     // 3. Para cada empresa del grupo, hacer upsert
     for (const row of rs.recordset) {
       try {
-        const idEmp = String(row.id_emp).trim();
+        const codEmp = String(row.cod_emp).trim();
         const nombre = String(row.nombre || '').trim();
         const riff = row.riff ? String(row.riff).trim() : null;
 
-        if (!idEmp || !nombre) {
-          result.errors.push(`Fila incompleta: id_emp=${row.id_emp}, nombre=${row.nombre}`);
+        if (!codEmp || !nombre) {
+          result.errors.push(`Fila incompleta: cod_emp=${row.cod_emp}, nombre=${row.nombre}`);
           continue;
         }
 
@@ -91,7 +91,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
           // Actualizar si hay cambios
           const needsUpdate =
             existing.nombre !== nombre ||
-            existing.profitDbName !== idEmp ||
+            existing.profitDbName !== codEmp ||
             existing.profitDbHost !== grupo.profitDbHost ||
             existing.profitDbUser !== grupo.profitDbUser ||
             existing.profitDbPassword !== grupo.profitDbPassword;
@@ -101,7 +101,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
               where: { id: existing.id },
               data: {
                 nombre,
-                profitDbName: idEmp,
+                profitDbName: codEmp,
                 profitDbHost: grupo.profitDbHost,
                 profitDbUser: grupo.profitDbUser,
                 profitDbPassword: grupo.profitDbPassword,
@@ -118,7 +118,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
               nombre,
               rif: riff,
               profitDbHost: grupo.profitDbHost,
-              profitDbName: idEmp,
+              profitDbName: codEmp,
               profitDbUser: grupo.profitDbUser,
               profitDbPassword: grupo.profitDbPassword,
               activo: true,
@@ -128,7 +128,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
         }
       } catch (rowError) {
         const msg = rowError instanceof Error ? rowError.message : String(rowError);
-        result.errors.push(`Error en fila id_emp=${row.id_emp}: ${msg}`);
+        result.errors.push(`Error en fila cod_emp=${row.cod_emp}: ${msg}`);
       }
     }
 
