@@ -4,8 +4,6 @@ import { useAuthStore } from '../stores/auth';
 import { useDashboardStore } from '../stores/dashboard';
 import { useLeadsStore } from '../stores/leads';
 import { useVisitasStore } from '../stores/visitas';
-import { cuentasComercialesApi } from '../services';
-import type { CuentaComercial } from '../domain';
 
 import SellerHeader from '../components/seller/SellerHeader.vue';
 import SellerOverviewMetrics from '../components/seller/SellerOverviewMetrics.vue';
@@ -32,7 +30,6 @@ const checkingIn = ref<string | null>(null);
 const checkInError = ref('');
 const showLeadModal = ref(false);
 const leadFormError = ref('');
-const cuentasComerciales = ref<CuentaComercial[]>([]);
 
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const weeks = computed(() => [...new Set(clients.value.flatMap((client) => client.visitas.map((visit) => visit.semana)))].sort((a, b) => a - b));
@@ -179,8 +176,7 @@ function clearClientSelection(): void {
 
 onMounted(async () => {
   try {
-    const [accounts] = await Promise.all([cuentasComercialesApi.list(), dashboard.load(true)]);
-    cuentasComerciales.value = accounts;
+    await dashboard.load(true);
     if (months.value.length) { selectedMonth.value = months.value[months.value.length - 1]; }
     if (weeks.value.length) { selectedWeek.value = weeks.value[0]; }
   } catch (cause) {
@@ -249,7 +245,6 @@ onMounted(async () => {
       v-if="showLeadModal" 
       :loading="leads.loading" 
       :error="leadFormError"
-      :cuentas-comerciales="cuentasComerciales"
       @submit="submitLead" 
       @close="showLeadModal = false" 
     />

@@ -1566,7 +1566,6 @@ onBeforeUnmount(() => {
     v-if="showLeadModal"
     :loading="leads.loading"
     :error="leadFormError"
-    :cuentas-comerciales="cuentasComerciales"
     @submit="submitLead"
     @close="showLeadModal = false"
   />

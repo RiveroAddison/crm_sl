@@ -2,12 +2,6 @@
 import { ref, computed } from 'vue';
 import type { TipoRif } from '../../domain/lead';
 
-const props = defineProps<{
-  loading: boolean;
-  error: string;
-  cuentasComerciales?: Array<{ id: string; nombre: string; rif: string | null }>;
-}>();
-
 const emit = defineEmits<{
   (e: 'submit', data: any): void;
   (e: 'close'): void;
@@ -28,7 +22,6 @@ const emailContacto = ref('');
 const fuente = ref<'WEB' | 'MENSAJE' | 'CORREO' | 'REUNION' | 'LLAMADA' | 'REFERIDO' | 'REDES'>('WEB');
 const fechaCaptacion = ref(new Date().toISOString().slice(0, 10));
 const descripcionCaptacion = ref('');
-const cuentaComercialId = ref('');
 
 const tiposRif: TipoRif[] = ['V', 'J', 'E', 'G', 'R', 'P'];
 const fuentes = [
@@ -69,7 +62,6 @@ function handleSubmit() {
     fuente: fuente.value,
     fechaCaptacion: fechaCaptacion.value,
     descripcionCaptacion: descripcionCaptacion.value || undefined,
-    cuentaComercialId: cuentaComercialId.value || undefined,
   });
 }
 </script>
@@ -267,23 +259,6 @@ function handleSubmit() {
             </div>
           </div>
         </fieldset>
-
-        <div v-if="cuentasComerciales?.length">
-          <label class="block text-xs font-bold text-slate-700 mb-1">Cuenta Comercial (opcional)</label>
-          <select
-            v-model="cuentaComercialId"
-            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-[#073b73]"
-          >
-            <option value="">Ninguna (se creará automáticamente)</option>
-            <option
-              v-for="cuenta in cuentasComerciales"
-              :key="cuenta.id"
-              :value="cuenta.id"
-            >
-              {{ cuenta.nombre }} ({{ cuenta.rif || 'Sin RIF' }})
-            </option>
-          </select>
-        </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
           <button
