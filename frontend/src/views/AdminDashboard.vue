@@ -1544,6 +1544,7 @@ onBeforeUnmount(() => {
           <!-- Company matrix assignments -->
           <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
             <h4 class="text-xs font-bold text-slate-700 border-b pb-1.5">Permisos por Empresa</h4>
+            <p class="text-[10px] text-slate-400">Un usuario ADMIN solo puede tener una empresa asignada.</p>
             <div v-for="emp in adminMaster.empresas" :key="emp.id" class="flex items-center justify-between text-xs py-1">
               <span class="font-medium text-slate-800">{{ emp.nombre }}</span>
               <div class="flex items-center gap-2">
@@ -1551,11 +1552,16 @@ onBeforeUnmount(() => {
                 <select
                   :value="userForm.empresas.find(e => e.empresaId === emp.id)?.rol || 'VENDEDOR'"
                   @change="($event) => {
+                    const newRol = ($event.target as HTMLSelectElement).value as any;
                     const found = userForm.empresas.find(e => e.empresaId === emp.id);
                     if (found) {
-                      found.rol = ($event.target as HTMLSelectElement).value as any;
+                      found.rol = newRol;
                     } else {
-                      userForm.empresas.push({ empresaId: emp.id, rol: ($event.target as HTMLSelectElement).value as any });
+                      userForm.empresas.push({ empresaId: emp.id, rol: newRol });
+                    }
+                    // Si el rol es ADMIN, quitar todas las demás empresas
+                    if (newRol === 'ADMIN') {
+                      userForm.empresas = userForm.empresas.filter(e => e.empresaId === emp.id);
                     }
                   }"
                   class="bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none"

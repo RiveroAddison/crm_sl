@@ -134,6 +134,12 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado' });
     }
 
+    // ADMIN solo puede tener 1 empresa
+    const hasAdmin = empresas.some(e => e.rol === 'ADMIN');
+    if (hasAdmin && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Un usuario ADMIN solo puede estar asignado a una empresa' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const newUser = await prisma.$transaction(async (tx) => {
@@ -205,6 +211,12 @@ export async function update(req: Request, res: Response) {
     });
     if (existingEmail) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado por otro usuario' });
+    }
+
+    // ADMIN solo puede tener 1 empresa
+    const hasAdmin = empresas.some(e => e.rol === 'ADMIN');
+    if (hasAdmin && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Un usuario ADMIN solo puede estar asignado a una empresa' });
     }
 
     const dataToUpdate: any = {
