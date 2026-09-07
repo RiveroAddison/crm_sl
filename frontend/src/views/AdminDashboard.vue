@@ -831,15 +831,58 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <!-- Stage Selector Quick Action -->
-                <div class="mt-2.5">
-                  <select
-                    :value="p.etapa"
-                    class="w-full text-[11px] bg-slate-50 border border-slate-200 rounded-md px-2 py-1 outline-none text-slate-700 font-medium hover:bg-slate-100 focus:border-[#073b73] transition-colors"
-                    @change="($event.target as HTMLSelectElement).value !== p.etapa && prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
-                  >
-                    <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value" :disabled="st.current">{{ st.label }}</option>
-                  </select>
+                <!-- Stage Info & Actions -->
+                <div class="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+                  <!-- Current Status Badge -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400">Estado:</span>
+                    <span
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      :class="{
+                        'bg-blue-100 text-blue-700': p.etapa === 'NUEVO',
+                        'bg-amber-100 text-amber-700': p.etapa === 'NEGOCIACION',
+                        'bg-emerald-100 text-emerald-700': p.etapa === 'CONVERTIDO',
+                        'bg-red-100 text-red-700': p.etapa === 'RECHAZADO'
+                      }"
+                    >
+                      {{ statuses.find(s => s.value === p.etapa)?.label || p.etapa }}
+                    </span>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div v-if="p.etapa === 'NUEVO'" class="flex gap-1.5">
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'NEGOCIACION')"
+                    >
+                      → Negociación
+                    </button>
+                  </div>
+                  <div v-else-if="p.etapa === 'NEGOCIACION'" class="flex gap-1.5">
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'CONVERTIDO')"
+                    >
+                      ✓ Aprobar
+                    </button>
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'RECHAZADO')"
+                    >
+                      ✕ Rechazar
+                    </button>
+                  </div>
+                  <div v-else class="text-center">
+                    <span
+                      class="text-[10px] font-bold px-3 py-1 rounded-full inline-block"
+                      :class="{
+                        'bg-emerald-100 text-emerald-600': p.etapa === 'CONVERTIDO',
+                        'bg-red-100 text-red-600': p.etapa === 'RECHAZADO'
+                      }"
+                    >
+                      {{ p.etapa === 'CONVERTIDO' ? '✅ Proceso completado' : '❌ Oportunidad rechazada' }}
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Activities Toggle -->
