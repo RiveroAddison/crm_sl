@@ -2,6 +2,11 @@
 import { ref, computed } from 'vue';
 import type { TipoRif } from '../../domain/lead';
 
+const props = defineProps<{
+  loading: boolean;
+  error: string;
+}>();
+
 const emit = defineEmits<{
   (e: 'submit', data: any): void;
   (e: 'close'): void;
