@@ -11,6 +11,7 @@ import { cuentasComercialesApi } from '../services';
 import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput } from '../domain';
 import ApproveLeadModal from '../components/common/ApproveLeadModal.vue';
 import RejectLeadModal from '../components/common/RejectLeadModal.vue';
+import LeadCaptureModal from '../components/common/LeadCaptureModal.vue';
 
 const auth = useAuthStore();
 const activeView = ref<'kanban' | 'table' | 'map' | 'leads' | 'pedidos' | 'usuarios' | 'empresas' | 'profit-sync'>('kanban');
@@ -310,26 +311,13 @@ async function submitProspect() {
 }
 
 function resetLeadForm() {
-  newLead.value = {
-    nombreContacto: '',
-    empresaNombre: '',
-    rif: '',
-    email: '',
-    telefono: '',
-    fuente: 'REFERIDO',
-    presupuesto: 0,
-    necesidad: '',
-    autoridad: '',
-    tiempo: '',
-    cuentaComercialId: ''
-  };
   leadFormError.value = '';
 }
 
-async function submitLead() {
+async function submitLead(leadData: any) {
   leadFormError.value = '';
   try {
-    await leads.create(newLead.value);
+    await leads.create(leadData);
     showLeadModal.value = false;
     resetLeadForm();
   } catch (cause) {
@@ -1572,89 +1560,16 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- MODAL 2: NUEVO LEAD -->
-    <div v-if="showLeadModal" class="modal-backdrop" @click.self="showLeadModal = false">
-      <div class="prospect-modal">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div>
-            <h2 class="text-lg font-bold text-[#073b73]">Captar Nuevo Lead</h2>
-            <p class="text-xs text-slate-500">Registra un prospecto preliminar para calificar criterios BANT/MEDDIC</p>
-          </div>
-          <button class="text-slate-400 hover:text-slate-600 font-bold text-base p-1" @click="showLeadModal = false">✕</button>
-        </div>
-
-        <form class="space-y-3.5" @submit.prevent="submitLead">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Nombre de Contacto *</label>
-              <input v-model="newLead.nombreContacto" required placeholder="Ej: Ing. Carlos Pérez" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Empresa / Razón Social *</label>
-              <input v-model="newLead.empresaNombre" required placeholder="Ej: Transporte Central C.A." class="w-full">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">RIF (Opcional)</label>
-              <input v-model="newLead.rif" placeholder="J-12345678-0" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
-              <input v-model="newLead.email" type="email" placeholder="contacto@empresa.com" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
-              <input v-model="newLead.telefono" placeholder="+58 414..." class="w-full">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Cuenta comercial</label>
-            <select v-model="newLead.cuentaComercialId" class="w-full">
-              <option value="">Crear o resolver por RIF</option>
-              <option v-for="cuenta in cuentasComerciales" :key="cuenta.id" :value="cuenta.id">{{ cuenta.nombre }}{{ cuenta.rif ? ` (${cuenta.rif})` : '' }}</option>
-            </select>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Canal de Origen</label>
-              <select v-model="newLead.fuente" class="w-full">
-                <option value="REFERIDO">Referido</option>
-                <option value="WEB">Web / Portal</option>
-                <option value="REDES">Redes Sociales</option>
-                <option value="LLAMADA">Llamada Comercial</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Presupuesto Estimado ($)</label>
-              <input v-model.number="newLead.presupuesto" type="number" min="0" placeholder="0" class="w-full">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Necesidad Detectada</label>
-            <input v-model="newLead.necesidad" placeholder="Ej: Requerimiento de 20.000 Lts diesel mensual" class="w-full">
-          </div>
-
-          <div v-if="leadFormError" class="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
-            {{ leadFormError }}
-          </div>
-
-          <footer>
-            <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg" @click="showLeadModal = false">
-              Cancelar
-            </button>
-            <button class="bg-[#073b73] hover:bg-[#0b5b95] text-white text-xs font-bold px-4 py-2 rounded-lg shadow" :disabled="leads.loading">
-              Crear Lead
-            </button>
-          </footer>
-        </form>
-      </div>
-    </div>
   </div>
+
+  <LeadCaptureModal
+    v-if="showLeadModal"
+    :loading="leads.loading"
+    :error="leadFormError"
+    :cuentas-comerciales="cuentasComerciales"
+    @submit="submitLead"
+    @close="showLeadModal = false"
+  />
 
   <ApproveLeadModal
     v-if="showApproveModal && selectedLeadForAction"
