@@ -8,7 +8,9 @@ import { usePedidosStore } from '../stores/pedidos';
 import { useAdminMasterStore } from '../stores/adminMaster';
 import { useVisitasStore } from '../stores/visitas';
 import { cuentasComercialesApi } from '../services';
-import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol } from '../domain';
+import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput } from '../domain';
+import ApproveLeadModal from '../components/common/ApproveLeadModal.vue';
+import RejectLeadModal from '../components/common/RejectLeadModal.vue';
 
 const auth = useAuthStore();
 const activeView = ref<'kanban' | 'table' | 'map' | 'leads' | 'pedidos' | 'usuarios' | 'empresas' | 'profit-sync'>('kanban');
@@ -23,6 +25,11 @@ const showModal = ref(false);
 const showLeadModal = ref(false);
 const showUserModal = ref(false);
 const showEmpresaModal = ref(false);
+const showApproveModal = ref(false);
+const showRejectModal = ref(false);
+const selectedLeadForAction = ref<Lead | null>(null);
+const leadActionError = ref('');
+const actividadesExpandidas = ref<string[]>([]);
 
 const editingUserId = ref<string | null>(null);
 const userForm = ref({
@@ -338,6 +345,56 @@ async function promoteLead(id: string) {
   } catch (cause) {
     leads.error = cause instanceof Error ? cause.message : 'No fue posible promover el lead';
   }
+}
+
+function openApproveModal(lead: Lead) {
+  selectedLeadForAction.value = lead;
+  leadActionError.value = '';
+  showApproveModal.value = true;
+}
+
+function openRejectModal(lead: Lead) {
+  selectedLeadForAction.value = lead;
+  leadActionError.value = '';
+  showRejectModal.value = true;
+}
+
+async function handleApproveLead(input: AprobarLeadInput) {
+  if (!selectedLeadForAction.value) return;
+  leadActionError.value = '';
+  try {
+    await leads.aprobar(selectedLeadForAction.value.id, input);
+    showApproveModal.value = false;
+    selectedLeadForAction.value = null;
+    await prospects.load(true);
+  } catch (cause) {
+    leadActionError.value = cause instanceof Error ? cause.message : 'Error al aprobar lead';
+  }
+}
+
+async function handleRejectLead(input: RechazarLeadInput) {
+  if (!selectedLeadForAction.value) return;
+  leadActionError.value = '';
+  try {
+    await leads.rechazar(selectedLeadForAction.value.id, input);
+    showRejectModal.value = false;
+    selectedLeadForAction.value = null;
+  } catch (cause) {
+    leadActionError.value = cause instanceof Error ? cause.message : 'Error al rechazar lead';
+  }
+}
+
+function toggleActividades(leadId: string) {
+  const index = actividadesExpandidas.value.indexOf(leadId);
+  if (index === -1) {
+    actividadesExpandidas.value.push(leadId);
+  } else {
+    actividadesExpandidas.value.splice(index, 1);
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 async function loadVisits() {
@@ -864,6 +921,19 @@ onBeforeUnmount(() => {
                 <div class="flex items-center gap-2 flex-wrap">
                   <strong class="text-sm font-bold text-slate-900">{{ lead.empresaNombre }}</strong>
                   <span class="text-xs text-slate-600 font-medium">({{ lead.nombreContacto }})</span>
+                  
+                  <span
+                    :class="[
+                      'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                      lead.estado === 'ACTIVO' ? 'bg-blue-100 text-blue-700' :
+                      lead.estado === 'APROBADO' ? 'bg-emerald-100 text-emerald-700' :
+                      lead.estado === 'RECHAZADO' ? 'bg-red-100 text-red-700' :
+                      'bg-amber-100 text-amber-700'
+                    ]"
+                  >
+                    {{ lead.estado }}
+                  </span>
+                  
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#073b73]">
                     {{ lead.fuente }}
                   </span>
@@ -872,8 +942,22 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <div class="text-xs text-slate-500 flex items-center gap-3">
-                  <span>✉ {{ lead.email || 'Sin email' }}</span>
-                  <span>📞 {{ lead.telefono || 'Sin teléfono' }}</span>
+                  <span>✉ {{ lead.emailContacto || lead.email || 'Sin email' }}</span>
+                  <span>📞 {{ lead.telefonoContacto || lead.telefono || 'Sin teléfono' }}</span>
+                  <span v-if="lead.cargoContacto">👤 {{ lead.cargoContacto }}</span>
+                </div>
+                <div v-if="lead.descripcionCaptacion" class="text-xs text-slate-600 pt-1">
+                  <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    <strong>Captación:</strong> {{ lead.descripcionCaptacion }}
+                  </span>
+                </div>
+                <div v-if="lead.crossSelling" class="text-xs text-amber-600 pt-1">
+                  <span class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    ⚠️ Ya compra en:
+                    <span v-if="lead.crossSelling.combustible === 'COMPRA'">Combustible </span>
+                    <span v-if="lead.crossSelling.lubricantes === 'COMPRA'">Lubricantes </span>
+                    <span v-if="lead.crossSelling.autopartes === 'COMPRA'">Autopartes </span>
+                  </span>
                 </div>
                 <div class="text-xs text-slate-700 pt-1 flex flex-wrap gap-2">
                   <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
@@ -885,7 +969,6 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <!-- Qualification Actions -->
               <div class="flex items-center gap-2 self-end md:self-auto">
                 <select
                   :value="lead.estadoCalificacion"
@@ -898,7 +981,23 @@ onBeforeUnmount(() => {
                 </select>
 
                 <button
-                  v-if="lead.estadoCalificacion === 'CALIFICADO'"
+                  v-if="lead.estado === 'ACTIVO'"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
+                  @click="openApproveModal(lead)"
+                >
+                  <span>✓ Aprobar</span>
+                </button>
+
+                <button
+                  v-if="lead.estado === 'ACTIVO'"
+                  class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
+                  @click="openRejectModal(lead)"
+                >
+                  <span>✕ Rechazar</span>
+                </button>
+
+                <button
+                  v-if="lead.estadoCalificacion === 'CALIFICADO' && lead.estado === 'ACTIVO'"
                   class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
                   @click="promoteLead(lead.id)"
                 >
@@ -1556,4 +1655,23 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <ApproveLeadModal
+    v-if="showApproveModal && selectedLeadForAction"
+    :lead="selectedLeadForAction"
+    :loading="leads.loading"
+    :error="leadActionError"
+    :user-role="auth.user?.rol || ''"
+    @submit="handleApproveLead"
+    @close="showApproveModal = false; selectedLeadForAction = null"
+  />
+
+  <RejectLeadModal
+    v-if="showRejectModal && selectedLeadForAction"
+    :lead="selectedLeadForAction"
+    :loading="leads.loading"
+    :error="leadActionError"
+    @submit="handleRejectLead"
+    @close="showRejectModal = false; selectedLeadForAction = null"
+  />
 </template>

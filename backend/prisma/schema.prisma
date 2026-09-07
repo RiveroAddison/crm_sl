@@ -25,12 +25,33 @@ enum FuenteLead {
   WEB
   LLAMADA
   REFERIDO
+  MENSAJE
+  CORREO
+  REUNION
 }
 
 enum EstadoCalificacionLead {
   NUEVO
   CALIFICADO
   DESCARTADO
+}
+
+enum EstadoLead {
+  ACTIVO
+  APROBADO
+  RECHAZADO
+  EN_PROCESO
+}
+
+enum TipoActividadLead {
+  CAPTACION
+  SEGUIMIENTO
+  LLAMADA
+  EMAIL
+  VISITA
+  REUNION
+  NOTA
+  WHATSAPP
 }
 
 // ==========================================
@@ -53,6 +74,7 @@ model Usuario {
   pedidos         Pedido[]
   clientesEmpresa ClienteEmpresa[]
   refreshTokens   RefreshToken[]
+  actividadesLead ActividadLead[]
 }
 
 /// Modelo para el catálogo de empresas del grupo San Luis y sus credenciales de Profit
@@ -77,6 +99,7 @@ model Empresa {
   leads            Lead[]
   pedidos          Pedido[]
   cuentasComerciales CuentaComercial[]
+  tiposCliente     TipoCliente[]
 }
 
 /// Cuenta externa captada por CRM, separada de la Empresa tenant.
@@ -260,29 +283,105 @@ model Lead {
   id                  String                @id @default(uuid())
   empresaId           String
   cuentaComercialId   String?
-  nombreContacto      String
+  
+  // Datos empresa
   empresaNombre       String
-  rif                 String?
-  email               String?
-  telefono            String?
+  rif                 String?               // Guardado concatenado: "J-12345678-9"
+  direccion           String?               // NUEVO
+  telefonoEmpresa     String?               // NUEVO
+  tipoIndustria       String?               // NUEVO
+  
+  // Datos contacto
+  cedulaContacto      String?               // NUEVO
+  nombreContacto      String                // Existente
+  cargoContacto       String?               // NUEVO
+  telefonoContacto    String?               // NUEVO
+  emailContacto       String?               // NUEVO
+  
+  // Datos captación
   fuente              FuenteLead
+  fechaCaptacion      DateTime              // NUEVO
+  descripcionCaptacion String?              // NUEVO
+  
+  // Estado y calificación
+  estado              EstadoLead            // NUEVO (default: ACTIVO)
   estadoCalificacion  EstadoCalificacionLead @default(NUEVO)
+  
+  // BANT (mantener por compatibilidad)
   presupuesto         Float?
   necesidad           String?
   autoridad           String?
   tiempo              String?
+  
+  // Asignación
   vendedorId          String
+  rubroOriginal       String?               // NUEVO: Rubro donde se creó
+  
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
+  // Relaciones
   empresa             Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   cuentaComercial     CuentaComercial?      @relation(fields: [cuentaComercialId], references: [id], onDelete: SetNull)
   vendedor            Usuario               @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
   oportunidades       Oportunidad[]
+  actividades         ActividadLead[]
+  rechazos            LeadRechazo[]
 
+  @@index([empresaId, estado])
   @@index([empresaId, estadoCalificacion])
   @@index([empresaId, vendedorId])
   @@index([cuentaComercialId])
+}
+
+/// Actividades registradas en un lead (bitácora)
+model ActividadLead {
+  id          String              @id @default(uuid())
+  leadId      String
+  empresaId   String
+  autorId     String
+  tipo        TipoActividadLead
+  descripcion String
+  fecha       DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  lead        Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  autor       Usuario             @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, fecha])
+  @@index([empresaId, leadId])
+}
+
+/// Rechazos de leads por rubro
+model LeadRechazo {
+  id          String   @id @default(uuid())
+  leadId      String
+  empresaId   String
+  rubro       String   // Rubro que fue rechazado
+  motivo      String   // Por qué se rechazó
+  rechazadoBy String   // Quién rechazó (usuarioId)
+  createdAt   DateTime @default(now())
+
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, rubro])
+  @@index([leadId])
+}
+
+/// Catálogo de tipos de cliente por empresa
+model TipoCliente {
+  id        String   @id @default(uuid())
+  empresaId String
+  nombre    String   // "Productor", "Estándar", etc.
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
 }
 
 /// Pedidos y ordenes de venta asociadas a clientes
