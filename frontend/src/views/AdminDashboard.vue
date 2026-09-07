@@ -1100,23 +1100,6 @@ onBeforeUnmount(() => {
                   <option value="DESCARTADO">Descartado</option>
                 </select>
 
-                <!-- Badge de estado para leads no activos -->
-                <div v-else class="flex items-center gap-2">
-                  <span
-                    class="text-xs font-bold px-3 py-1.5 rounded-lg"
-                    :class="{
-                      'bg-emerald-100 text-emerald-700 border border-emerald-200': lead.estado === 'APROBADO',
-                      'bg-red-100 text-red-700 border border-red-200': lead.estado === 'RECHAZADO',
-                      'bg-amber-100 text-amber-700 border border-amber-200': lead.estado === 'EN_PROCESO'
-                    }"
-                  >
-                    {{ lead.estado === 'APROBADO' ? '✅ Aprobado' : lead.estado === 'RECHAZADO' ? '❌ Rechazado' : '⏳ En Proceso' }}
-                  </span>
-                  <span v-if="lead.rubroOriginal" class="text-[10px] text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                    Rubro: {{ lead.rubroOriginal }}
-                  </span>
-                </div>
-
                 <button
                   v-if="lead.estado === 'ACTIVO'"
                   class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
@@ -1150,60 +1133,29 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <!-- Rechazos info -->
-              <div v-if="lead.rechazos && lead.rechazos.length > 0" class="mt-2 pt-2 border-t border-slate-200">
-                <p class="text-[10px] font-bold text-slate-500 mb-1">Rubros rechazados:</p>
-                <div class="flex flex-wrap gap-1.5">
-                  <span
-                    v-for="rechazo in lead.rechazos"
-                    :key="rechazo.id"
-                    class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200"
-                    :title="rechazo.motivo"
-                  >
-                    {{ rechazo.rubro }}
-                  </span>
-                </div>
-              </div>
-
               <!-- Rubros info cards -->
-              <div class="mt-2 pt-2 border-t border-slate-200">
-                <p class="text-[10px] font-bold text-slate-500 mb-1.5">Estado por rubro:</p>
-                <div class="flex flex-wrap gap-1.5">
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Combustible</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'COMBUSTIBLE'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'COMBUSTIBLE')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
-                  </div>
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Lubricantes</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'LUBRICANTES'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'LUBRICANTES')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
-                  </div>
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Autopartes</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'AUTOPARTES'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'AUTOPARTES')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
-                  </div>
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Transporte</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'TRANSPORTE'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'TRANSPORTE')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
-                  </div>
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Alimentos Bal.</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'ALIMENTOS_BALANCEADOS'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'ALIMENTOS_BALANCEADOS')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
-                  </div>
-                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
-                    <span class="text-[10px] font-bold text-slate-700">Alimentos Cong.</span>
-                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'ALIMENTOS_CONGELADOS'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
-                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'ALIMENTOS_CONGELADOS')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
-                    <span v-else class="block text-[9px] text-slate-400">—</span>
+              <div class="mt-3 pt-3 border-t border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rubros evaluados</p>
+                <div class="flex flex-wrap gap-2">
+                  <div
+                    v-for="rubro in ['COMBUSTIBLE', 'LUBRICANTES', 'AUTOPARTES', 'TRANSPORTE', 'ALIMENTOS_BALANCEADOS', 'ALIMENTOS_CONGELADOS']"
+                    :key="rubro"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium border transition-colors"
+                    :class="{
+                      'bg-emerald-50 border-emerald-200 text-emerald-700': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                      'bg-red-50 border-red-200 text-red-600 line-through': lead.rechazos?.some(r => r.rubro === rubro),
+                      'bg-slate-50 border-slate-200 text-slate-400': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                    }"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full"
+                      :class="{
+                        'bg-emerald-500': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                        'bg-red-400': lead.rechazos?.some(r => r.rubro === rubro),
+                        'bg-slate-300': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                      }"
+                    ></span>
+                    {{ rubro.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) }}
                   </div>
                 </div>
               </div>
