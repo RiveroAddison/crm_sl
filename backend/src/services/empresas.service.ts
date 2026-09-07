@@ -63,7 +63,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
   try {
     pool = await sql.connect(connectionConfig(grupo));
     const request = pool.request();
-    const rs = await request.query('SELECT cod_emp, nombre, riff FROM Tempresas');
+    const rs = await request.query('SELECT cod_emp, nombre, rif FROM Tempresas');
 
     if (!rs.recordset || rs.recordset.length === 0) {
       result.ok = true;
@@ -75,7 +75,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
       try {
         const codEmp = String(row.cod_emp).trim();
         const nombre = String(row.nombre || '').trim();
-        const riff = row.riff ? String(row.riff).trim() : null;
+        const rif = row.rif ? String(row.rif).trim() : null;
 
         if (!codEmp || !nombre) {
           result.errors.push(`Fila incompleta: cod_emp=${row.cod_emp}, nombre=${row.nombre}`);
@@ -83,8 +83,8 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
         }
 
         // Buscar si ya existe una empresa con ese RIF
-        const existing = riff
-          ? await prisma.empresa.findFirst({ where: { rif: riff } })
+        const existing = rif
+          ? await prisma.empresa.findFirst({ where: { rif } })
           : null;
 
         if (existing) {
@@ -116,7 +116,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
           await prisma.empresa.create({
             data: {
               nombre,
-              rif: riff,
+              rif,
               profitDbHost: grupo.profitDbHost,
               profitDbName: codEmp,
               profitDbUser: grupo.profitDbUser,
