@@ -1164,6 +1164,49 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
               </div>
+
+              <!-- Rubros info cards -->
+              <div class="mt-2 pt-2 border-t border-slate-200">
+                <p class="text-[10px] font-bold text-slate-500 mb-1.5">Estado por rubro:</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Combustible</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'COMBUSTIBLE'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'COMBUSTIBLE')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Lubricantes</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'LUBRICANTES'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'LUBRICANTES')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Autopartes</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'AUTOPARTES'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'AUTOPARTES')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Transporte</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'TRANSPORTE'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'TRANSPORTE')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Alimentos Bal.</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'ALIMENTOS_BALANCEADOS'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'ALIMENTOS_BALANCEADOS')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                  <div class="bg-slate-100 rounded-lg px-2 py-1 border border-slate-200">
+                    <span class="text-[10px] font-bold text-slate-700">Alimentos Cong.</span>
+                    <span v-if="lead.estado === 'APROBADO' && lead.rubroOriginal === 'ALIMENTOS_CONGELADOS'" class="block text-[9px] text-emerald-600 font-semibold">✓ Aprobado</span>
+                    <span v-else-if="lead.rechazos?.some(r => r.rubro === 'ALIMENTOS_CONGELADOS')" class="block text-[9px] text-red-600 font-semibold">✕ Rechazado</span>
+                    <span v-else class="block text-[9px] text-slate-400">—</span>
+                  </div>
+                </div>
+              </div>
             </article>
 
             <div v-if="!leads.leads.length" class="text-center py-12 text-slate-500 text-xs">
