@@ -1088,7 +1088,9 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="flex items-center gap-2 self-end md:self-auto">
+                <!-- Select de calificación solo para leads activos -->
                 <select
+                  v-if="lead.estado === 'ACTIVO'"
                   :value="lead.estadoCalificacion"
                   class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold outline-none text-slate-700"
                   @change="leads.setCalificacion(lead, ($event.target as HTMLSelectElement).value as any)"
@@ -1097,6 +1099,23 @@ onBeforeUnmount(() => {
                   <option value="CALIFICADO">Calificado</option>
                   <option value="DESCARTADO">Descartado</option>
                 </select>
+
+                <!-- Badge de estado para leads no activos -->
+                <div v-else class="flex items-center gap-2">
+                  <span
+                    class="text-xs font-bold px-3 py-1.5 rounded-lg"
+                    :class="{
+                      'bg-emerald-100 text-emerald-700 border border-emerald-200': lead.estado === 'APROBADO',
+                      'bg-red-100 text-red-700 border border-red-200': lead.estado === 'RECHAZADO',
+                      'bg-amber-100 text-amber-700 border border-amber-200': lead.estado === 'EN_PROCESO'
+                    }"
+                  >
+                    {{ lead.estado === 'APROBADO' ? '✅ Aprobado' : lead.estado === 'RECHAZADO' ? '❌ Rechazado' : '⏳ En Proceso' }}
+                  </span>
+                  <span v-if="lead.rubroOriginal" class="text-[10px] text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    Rubro: {{ lead.rubroOriginal }}
+                  </span>
+                </div>
 
                 <button
                   v-if="lead.estado === 'ACTIVO'"
@@ -1129,6 +1148,21 @@ onBeforeUnmount(() => {
                 >
                   ✕
                 </button>
+              </div>
+
+              <!-- Rechazos info -->
+              <div v-if="lead.rechazos && lead.rechazos.length > 0" class="mt-2 pt-2 border-t border-slate-200">
+                <p class="text-[10px] font-bold text-slate-500 mb-1">Rubros rechazados:</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="rechazo in lead.rechazos"
+                    :key="rechazo.id"
+                    class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-200"
+                    :title="rechazo.motivo"
+                  >
+                    {{ rechazo.rubro }}
+                  </span>
+                </div>
               </div>
             </article>
 
