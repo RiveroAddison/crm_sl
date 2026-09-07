@@ -232,7 +232,7 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
 
     await tx.lead.update({
       where: { id: lead.id },
-      data: { estado: 'APROBADO' }
+      data: { estado: 'APROBADO', rubroOriginal: input.rubro }
     });
 
     if (crossSellingInfo) {
