@@ -50,8 +50,10 @@ const rubroEmpresaToValue: Record<string, string> = {
 
 const rubros = computed(() => {
   if (props.userRole === 'MASTER') return allRubros;
-  // ADMIN: solo el rubro de su empresa
-  const rubroValue = rubroEmpresaToValue[props.userEmpresaRubro] || 'COMBUSTIBLE';
+  // ADMIN: si tiene rubro definido, solo ese; si no, todos
+  if (!props.userEmpresaRubro) return allRubros;
+  const rubroValue = rubroEmpresaToValue[props.userEmpresaRubro];
+  if (!rubroValue) return allRubros;
   return allRubros.filter(r => r.value === rubroValue);
 });
 
