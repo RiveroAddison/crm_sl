@@ -156,12 +156,14 @@ model ClienteCorporativo {
   direccion          String?
   telefono           String?
   matriz             Boolean             @default(false)
+  tipoClienteId      String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
   clientesEmpresa    ClienteEmpresa[]
   crossSellingMatriz CrossSellingMatriz?
   oportunidades      Oportunidad[]
+  tipoCliente        TipoCliente?        @relation(fields: [tipoClienteId], references: [id], onDelete: SetNull)
 }
 
 /// Datos del cliente específicos para una unidad de negocio / empresa
@@ -378,7 +380,8 @@ model TipoCliente {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa              Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  clientesCorporativos ClienteCorporativo[]
 
   @@unique([empresaId, nombre])
   @@index([empresaId])

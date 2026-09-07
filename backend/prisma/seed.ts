@@ -60,41 +60,10 @@ async function main() {
     },
   });
 
-  // 5. Crear tipos de cliente predefinidos para la empresa.
-  const tiposCliente = [
-    { nombre: 'Corporativo', activo: true },
-    { nombre: 'Gobierno', activo: true },
-    { nombre: 'PYMES', activo: true },
-    { nombre: 'Particular', activo: true },
-    { nombre: 'ONG', activo: true },
-    { nombre: 'Internacional', activo: true },
-    { nombre: 'Distribuidor', activo: true },
-    { nombre: 'Minorista', activo: true },
-    { nombre: 'Mayorista', activo: true },
-  ];
-
-  for (const tipo of tiposCliente) {
-    await prisma.tipoCliente.upsert({
-      where: {
-        empresaId_nombre: {
-          empresaId: empresa.id,
-          nombre: tipo.nombre
-        }
-      },
-      update: {},
-      create: {
-        empresaId: empresa.id,
-        nombre: tipo.nombre,
-        activo: tipo.activo
-      }
-    });
-  }
-
   console.log('✅ Seed completado con éxito:');
   console.log(`- Master: ${usuarioMaster.email}`);
   console.log(`- Empresa creada y asociada: ${empresa.nombre}`);
   console.log(`- Rubro: ${empresa.rubro}`);
-  console.log(`- Tipos de cliente creados: ${tiposCliente.length}`);
   console.log('- Rol: MASTER');
 }
 
