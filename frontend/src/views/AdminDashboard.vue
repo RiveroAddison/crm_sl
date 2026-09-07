@@ -742,29 +742,6 @@ onBeforeUnmount(() => {
                   class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-[#073b73] focus:ring-1 focus:ring-[#073b73] transition-all"
                 >
               </div>
-
-              <select
-                v-model="prospects.selectedSeller"
-                class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:bg-white focus:border-[#073b73] text-slate-700"
-              >
-                <option>Todos los Vendedores</option>
-                <option v-for="s in sellers" :key="s">{{ s }}</option>
-              </select>
-
-              <select
-                v-model="prospects.selectedStatus"
-                class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:bg-white focus:border-[#073b73] text-slate-700"
-              >
-                <option>Todos los Estados</option>
-                <option v-for="st in statuses" :key="st.value">{{ st.label }}</option>
-              </select>
-
-              <button
-                class="text-xs font-semibold text-slate-500 hover:text-[#073b73] hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors"
-                @click="clearFilters"
-              >
-                Limpiar filtros
-              </button>
             </div>
           </div>
         </section>
