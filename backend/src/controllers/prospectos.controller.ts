@@ -8,7 +8,18 @@ const optionalUuid = z.preprocess((value) => value === '' || value === '00000000
 const prospectSchema = z.object({ razonSocial: z.string().min(2), rif: z.string().regex(/^[JVEGjveg]-[0-9]{8,9}-[0-9]$/), titulo: z.string().min(3), rubro: z.string().optional(), direccion: z.string().optional(), telefono: z.string().optional(), etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']).default('NUEVO'), valorEstimado: z.number().min(0), fechaContacto: z.string().min(1), vendedorNombre: z.string().min(1), cuentaComercialId: optionalUuid, empresaClienteId: optionalUuid });
 const stageSchema = z.object({ etapa: z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']) });
 
-function response(prospect: any) { return { ...prospect, fechaContacto: prospect.fechaContacto.toISOString().slice(0, 10) }; }
+function response(prospect: any) {
+  return {
+    ...prospect,
+    fechaContacto: prospect.fechaContacto.toISOString().slice(0, 10),
+    actividades: (prospect.actividades || []).map((a: any) => ({
+      ...a,
+      fecha: a.fecha instanceof Date ? a.fecha.toISOString() : a.fecha,
+      createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
+      updatedAt: a.updatedAt instanceof Date ? a.updatedAt.toISOString() : a.updatedAt,
+    }))
+  };
+}
 
 export async function list(req: Request, res: Response) {
   try { const context = await getRequestContext(req); if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' }); const items = await prisma.oportunidad.findMany({ where: { empresaId: context.tenantId, ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {}) }, include: { actividades: { include: { autor: { select: { id: true, nombre: true } } }, orderBy: { fecha: 'desc' } } }, orderBy: { createdAt: 'desc' } }); return res.json({ success: true, data: items.map(response), error: '' }); }
