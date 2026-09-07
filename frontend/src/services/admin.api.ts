@@ -25,6 +25,11 @@ export const usuariosApi = {
     return UsuarioListResponseSchema.parse(data).data;
   },
 
+  async listVendedoresByEmpresa(empresaId: string): Promise<Array<{ id: string; nombre: string; email: string }>> {
+    const { data } = await http.get(`/api/usuarios/vendedores-empresa?empresaId=${empresaId}`);
+    return data.data;
+  },
+
   async get(id: string): Promise<Usuario> {
     const { data } = await http.get(`/api/usuarios/${id}`);
     return UsuarioResponseSchema.parse(data).data;

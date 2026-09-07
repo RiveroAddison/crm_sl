@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { list, get, create, update, remove } from '../controllers/usuarios.controller.js';
+import { list, listVendedoresByEmpresa, get, create, update, remove } from '../controllers/usuarios.controller.js';
 
 const router = Router();
 
 router.get('/', list);
+router.get('/vendedores-empresa', listVendedoresByEmpresa);
 router.get('/:id', get);
 router.post('/', create);
 router.put('/:id', update);

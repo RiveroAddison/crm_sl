@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import type { Lead, TipoCliente } from '../../domain/lead';
 import { tiposClienteApi } from '../../services/tiposCliente.api';
+import { usuariosApi } from '../../services/admin.api';
 
 const props = defineProps<{
   lead: Lead;
@@ -46,18 +47,26 @@ const isValid = computed(() => {
 });
 
 onMounted(async () => {
+  await cargarDatos();
+});
+
+async function cargarDatos() {
   try {
-    const response = await tiposClienteApi.list();
-    tiposCliente.value = response.data;
+    const tiposResponse = await tiposClienteApi.list();
+    tiposCliente.value = tiposResponse;
   } catch (error) {
     console.error('Error al cargar tipos de cliente:', error);
   }
 
-  vendedores.value = [
-    { id: 'vendedor-1', nombre: 'Vendedor 1' },
-    { id: 'vendedor-2', nombre: 'Vendedor 2' },
-  ];
-});
+  if (props.lead.empresaId) {
+    try {
+      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(props.lead.empresaId);
+      vendedores.value = vendedoresResponse;
+    } catch (error) {
+      console.error('Error al cargar vendedores:', error);
+    }
+  }
+}
 
 function handleSubmit() {
   if (!isValid.value) return;

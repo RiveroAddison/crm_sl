@@ -251,6 +251,48 @@ export async function update(req: Request, res: Response) {
   }
 }
 
+export async function listVendedoresByEmpresa(req: Request, res: Response) {
+  try {
+    const context = await getMasterOrAdminContext(req);
+    if (!context) {
+      return res.status(403).json({ success: false, data: null, error: 'No autorizado' });
+    }
+
+    const { empresaId } = req.query;
+    if (!empresaId || typeof empresaId !== 'string') {
+      return res.status(400).json({ success: false, data: null, error: 'empresaId es requerido' });
+    }
+
+    const vendedores = await prisma.usuarioEmpresa.findMany({
+      where: {
+        empresaId,
+        rol: 'VENDEDOR',
+        activo: true,
+        usuario: { activo: true }
+      },
+      include: {
+        usuario: {
+          select: { id: true, nombre: true, email: true }
+        }
+      },
+      orderBy: { usuario: { nombre: 'asc' } }
+    });
+
+    return res.json({
+      success: true,
+      data: vendedores.map(ve => ({
+        id: ve.usuario.id,
+        nombre: ve.usuario.nombre,
+        email: ve.usuario.email
+      })),
+      error: ''
+    });
+  } catch (error) {
+    console.error('Error al listar vendedores por empresa:', error);
+    return res.status(500).json({ success: false, data: null, error: 'Error al listar vendedores' });
+  }
+}
+
 export async function remove(req: Request, res: Response) {
   try {
     const context = await getMasterOrAdminContext(req);
