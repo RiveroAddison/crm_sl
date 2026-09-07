@@ -1033,131 +1033,107 @@ onBeforeUnmount(() => {
             <article
               v-for="lead in leads.leads"
               :key="lead.id"
-              class="bg-slate-50/70 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              class="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-md transition-all"
             >
-              <div class="space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <strong class="text-sm font-bold text-slate-900">{{ lead.empresaNombre }}</strong>
-                  <span class="text-xs text-slate-600 font-medium">({{ lead.nombreContacto }})</span>
-                  
-                  <span
-                    :class="[
-                      'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                      lead.estado === 'ACTIVO' ? 'bg-blue-100 text-blue-700' :
-                      lead.estado === 'APROBADO' ? 'bg-emerald-100 text-emerald-700' :
-                      lead.estado === 'RECHAZADO' ? 'bg-red-100 text-red-700' :
-                      'bg-amber-100 text-amber-700'
-                    ]"
+              <!-- Header: Empresa + Badges -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <strong class="text-sm font-bold text-slate-900">{{ lead.empresaNombre }}</strong>
+                    <span class="text-xs text-slate-500">({{ lead.nombreContacto }})</span>
+                    <span v-if="lead.rif" class="font-mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{{ lead.rif }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                    <span
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      :class="{
+                        'bg-blue-100 text-blue-700': lead.estado === 'ACTIVO',
+                        'bg-emerald-100 text-emerald-700': lead.estado === 'APROBADO',
+                        'bg-red-100 text-red-700': lead.estado === 'RECHAZADO',
+                        'bg-amber-100 text-amber-700': lead.estado === 'EN_PROCESO'
+                      }"
+                    >
+                      {{ lead.estado }}
+                    </span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      {{ lead.fuente }}
+                    </span>
+                    <span class="text-[10px] text-slate-400">•</span>
+                    <span class="text-[10px] text-slate-500">✉ {{ lead.emailContacto || 'Sin email' }}</span>
+                    <span class="text-[10px] text-slate-500">📞 {{ lead.telefonoContacto || 'Sin teléfono' }}</span>
+                  </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <select
+                    v-if="lead.estado === 'ACTIVO'"
+                    :value="lead.estadoCalificacion"
+                    class="text-[11px] bg-white border border-slate-200 rounded-md px-2 py-1 font-semibold outline-none text-slate-700"
+                    @change="leads.setCalificacion(lead, ($event.target as HTMLSelectElement).value as any)"
                   >
-                    {{ lead.estado }}
-                  </span>
-                  
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#073b73]">
-                    {{ lead.fuente }}
-                  </span>
-                  <span v-if="lead.rif" class="font-mono text-[10px] bg-slate-200/70 text-slate-700 px-1.5 py-0.5 rounded">
-                    {{ lead.rif }}
-                  </span>
-                </div>
-                <div class="text-xs text-slate-500 flex items-center gap-3">
-                  <span>✉ {{ lead.emailContacto || lead.email || 'Sin email' }}</span>
-                  <span>📞 {{ lead.telefonoContacto || lead.telefono || 'Sin teléfono' }}</span>
-                  <span v-if="lead.cargoContacto">👤 {{ lead.cargoContacto }}</span>
-                </div>
-                <div v-if="lead.descripcionCaptacion" class="text-xs text-slate-600 pt-1">
-                  <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                    <strong>Captación:</strong> {{ lead.descripcionCaptacion }}
-                  </span>
-                </div>
-                <div v-if="lead.crossSelling" class="text-xs text-amber-600 pt-1">
-                  <span class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    ⚠️ Ya compra en:
-                    <span v-if="lead.crossSelling.combustible === 'COMPRA'">Combustible </span>
-                    <span v-if="lead.crossSelling.lubricantes === 'COMPRA'">Lubricantes </span>
-                    <span v-if="lead.crossSelling.autopartes === 'COMPRA'">Autopartes </span>
-                  </span>
-                </div>
-                <div class="text-xs text-slate-700 pt-1 flex flex-wrap gap-2">
-                  <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                    <strong>Necesidad:</strong> {{ lead.necesidad || 'Por definir' }}
-                  </span>
-                  <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                    <strong>Presupuesto:</strong> {{ lead.presupuesto ? formatCurrency(lead.presupuesto) : 'Por definir' }}
-                  </span>
+                    <option value="NUEVO">Nuevo</option>
+                    <option value="CALIFICADO">Calificado</option>
+                    <option value="DESCARTADO">Descartado</option>
+                  </select>
+                  <button
+                    v-if="lead.estado === 'ACTIVO'"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="openApproveModal(lead)"
+                  >✓ Aprobar</button>
+                  <button
+                    v-if="lead.estado === 'ACTIVO'"
+                    class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="openRejectModal(lead)"
+                  >✕ Rechazar</button>
+                  <button
+                    v-if="lead.estadoCalificacion === 'CALIFICADO' && lead.estado === 'ACTIVO'"
+                    class="bg-[#073b73] hover:bg-[#0b5b95] text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="promoteLead(lead.id)"
+                  >Promover ➔</button>
+                  <button
+                    class="text-slate-300 hover:text-red-500 p-1 rounded transition-colors"
+                    @click="leads.remove(lead.id)"
+                  >✕</button>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2 self-end md:self-auto">
-                <!-- Select de calificación solo para leads activos -->
-                <select
-                  v-if="lead.estado === 'ACTIVO'"
-                  :value="lead.estadoCalificacion"
-                  class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold outline-none text-slate-700"
-                  @change="leads.setCalificacion(lead, ($event.target as HTMLSelectElement).value as any)"
-                >
-                  <option value="NUEVO">Nuevo</option>
-                  <option value="CALIFICADO">Calificado</option>
-                  <option value="DESCARTADO">Descartado</option>
-                </select>
-
-                <button
-                  v-if="lead.estado === 'ACTIVO'"
-                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
-                  @click="openApproveModal(lead)"
-                >
-                  <span>✓ Aprobar</span>
-                </button>
-
-                <button
-                  v-if="lead.estado === 'ACTIVO'"
-                  class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
-                  @click="openRejectModal(lead)"
-                >
-                  <span>✕ Rechazar</span>
-                </button>
-
-                <button
-                  v-if="lead.estadoCalificacion === 'CALIFICADO' && lead.estado === 'ACTIVO'"
-                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
-                  @click="promoteLead(lead.id)"
-                >
-                  <span>Promover a Kanban ➔</span>
-                </button>
-
-                <button
-                  class="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded text-xs transition-colors"
-                  title="Eliminar lead"
-                  @click="leads.remove(lead.id)"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <!-- Rubros info cards -->
-              <div class="mt-3 pt-3 border-t border-slate-200">
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rubros evaluados</p>
-                <div class="flex flex-wrap gap-2">
-                  <div
-                    v-for="rubro in ['COMBUSTIBLE', 'LUBRICANTES', 'AUTOPARTES', 'TRANSPORTE', 'ALIMENTOS_BALANCEADOS', 'ALIMENTOS_CONGELADOS']"
-                    :key="rubro"
-                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium border transition-colors"
+              <!-- Rubros inline -->
+              <div class="mt-3 flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] text-slate-400 font-medium mr-1">Rubros:</span>
+                <template v-for="rubro in ['COMBUSTIBLE', 'LUBRICANTES', 'AUTOPARTES', 'TRANSPORTE', 'ALIMENTOS_BALANCEADOS', 'ALIMENTOS_CONGELADOS']" :key="rubro">
+                  <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium"
                     :class="{
-                      'bg-emerald-50 border-emerald-200 text-emerald-700': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
-                      'bg-red-50 border-red-200 text-red-600 line-through': lead.rechazos?.some(r => r.rubro === rubro),
-                      'bg-slate-50 border-slate-200 text-slate-400': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                      'bg-emerald-100 text-emerald-700': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                      'bg-red-100 text-red-600': lead.rechazos?.some(r => r.rubro === rubro),
+                      'bg-slate-100 text-slate-400': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
                     }"
                   >
                     <span
-                      class="w-1.5 h-1.5 rounded-full"
+                      class="w-1 h-1 rounded-full"
                       :class="{
                         'bg-emerald-500': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
                         'bg-red-400': lead.rechazos?.some(r => r.rubro === rubro),
                         'bg-slate-300': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
                       }"
                     ></span>
-                    {{ rubro.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) }}
-                  </div>
-                </div>
+                    {{ rubro.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                  </span>
+                </template>
+              </div>
+
+              <!-- Info adicional -->
+              <div v-if="lead.descripcionCaptacion || lead.necesidad || lead.crossSelling" class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-3 flex-wrap text-[11px]">
+                <span v-if="lead.descripcionCaptacion" class="text-slate-500">
+                  <strong class="text-slate-600">Captación:</strong> {{ lead.descripcionCaptacion }}
+                </span>
+                <span v-if="lead.necesidad" class="text-slate-500">
+                  <strong class="text-slate-600">Necesidad:</strong> {{ lead.necesidad }}
+                </span>
+                <span v-if="lead.crossSelling" class="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                  ⚠️ Ya compra en: {{ [lead.crossSelling.combustible === 'COMPRA' ? 'Combustible' : '', lead.crossSelling.lubricantes === 'COMPRA' ? 'Lubricantes' : '', lead.crossSelling.autopartes === 'COMPRA' ? 'Autopartes' : ''].filter(Boolean).join(', ') }}
+                </span>
               </div>
             </article>
 
