@@ -240,9 +240,26 @@ export async function update(req: Request, res: Response) {
       }
     });
 
+    // Reconstruir la lista de empresas del usuario
+    const usuarioEmpresas = await prisma.usuarioEmpresa.findMany({
+      where: { usuarioId: id },
+      include: { empresa: true }
+    });
+
     return res.json({
       success: true,
-      data: { id, nombre, email: normalizedEmail, activo },
+      data: {
+        id,
+        nombre,
+        email: normalizedEmail,
+        activo,
+        empresas: usuarioEmpresas.map(ue => ({
+          empresaId: ue.empresaId,
+          empresaNombre: ue.empresa.nombre,
+          rol: ue.rol,
+          activo: ue.activo
+        }))
+      },
       error: ''
     });
   } catch (error) {
