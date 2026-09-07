@@ -864,9 +864,8 @@ onBeforeUnmount(() => {
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
+                <template v-for="p in filteredProspectos" :key="p.id">
                 <tr
-                  v-for="p in filteredProspectos"
-                  :key="p.id"
                   class="hover:bg-slate-50/80 transition-colors"
                 >
                   <td class="px-4 py-3.5 font-bold text-slate-900">{{ p.razonSocial }}</td>
@@ -907,7 +906,7 @@ onBeforeUnmount(() => {
                     </div>
                   </td>
                 </tr>
-                <tr v-if="isActividadesOportunidadExpanded(p.id)" :key="p.id + '-actividades'">
+                <tr v-if="isActividadesOportunidadExpanded(p.id)">
                   <td colspan="7" class="px-4 py-3 bg-slate-50">
                     <ActivityTimeline
                       :actividades="p.actividades || []"
@@ -916,6 +915,7 @@ onBeforeUnmount(() => {
                     />
                   </td>
                 </tr>
+                </template>
               </tbody>
             </table>
           </div>
