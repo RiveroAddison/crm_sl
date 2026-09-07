@@ -60,7 +60,8 @@ const include = {
     include: { autor: { select: { id: true, nombre: true } } },
     orderBy: { fecha: 'desc' as const }
   },
-  rechazos: true
+  rechazos: true,
+  oportunidades: { select: { id: true, rubro: true, valorEstimado: true, etapa: true }, take: 1 }
 } as const;
 
 export async function listLeads(context: RequestContext) {

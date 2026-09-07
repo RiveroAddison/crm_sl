@@ -73,6 +73,12 @@ export const LeadSchema = z.object({
     nombre: z.string(),
     rif: z.string().nullable(),
   }).nullable().optional(),
+  oportunidades: z.array(z.object({
+    id: z.string(),
+    rubro: z.string().nullable(),
+    valorEstimado: z.number(),
+    etapa: z.string(),
+  })).optional(),
   actividades: z.array(z.object({
     id: z.string(),
     tipo: TipoActividadLeadSchema,
