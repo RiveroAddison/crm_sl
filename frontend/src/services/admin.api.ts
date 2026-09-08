@@ -30,6 +30,11 @@ export const usuariosApi = {
     return data.data;
   },
 
+  async listVendedoresByRubro(rubro: string): Promise<Array<{ id: string; nombre: string; email: string }>> {
+    const { data } = await http.get(`/api/usuarios/vendedores-rubro?rubro=${encodeURIComponent(rubro)}`);
+    return data.data;
+  },
+
   async get(id: string): Promise<Usuario> {
     const { data } = await http.get(`/api/usuarios/${id}`);
     return UsuarioResponseSchema.parse(data).data;

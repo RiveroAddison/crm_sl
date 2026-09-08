@@ -11,7 +11,6 @@ const props = defineProps<{
   userRole: string;
   userEmpresaId: string;
   userEmpresaRubro: string;
-  leadEmpresaRubro?: string;
 }>();
 
 const emit = defineEmits<{
@@ -64,19 +63,65 @@ const normalizeRubroLookup = (value?: string | null) => {
 };
 
 const rubros = computed(() => {
-  if (props.userRole === 'MASTER') {
-    const rubroFuente = props.leadEmpresaRubro || props.userEmpresaRubro;
-    if (!rubroFuente) return allRubros;
-    const rubroValue = normalizeRubroLookup(rubroFuente);
-    if (!rubroValue) return allRubros;
-    return allRubros.filter(r => r.value === rubroValue);
-  }
+  // MASTER ve todos los rubros
+  if (props.userRole === 'MASTER') return allRubros;
 
   // ADMIN: solo el rubro de la empresa activa
   if (!props.userEmpresaRubro) return allRubros;
   const rubroValue = normalizeRubroLookup(props.userEmpresaRubro);
   if (!rubroValue) return allRubros;
   return allRubros.filter(r => r.value === rubroValue);
+});
+
+// Para MASTER: cargar todos los tipos de cliente (sin filtro de empresa)
+async function cargarTiposCliente() {
+  if (props.userRole === 'MASTER') {
+    try {
+      const tiposResponse = await tiposClienteApi.list();
+      tiposCliente.value = tiposResponse;
+    } catch (error) {
+      console.error('Error al cargar tipos de cliente:', error);
+    }
+  } else {
+    try {
+      const tiposResponse = await tiposClienteApi.list(props.userEmpresaId);
+      tiposCliente.value = tiposResponse;
+    } catch (error) {
+      console.error('Error al cargar tipos de cliente:', error);
+    }
+  }
+}
+
+// Cargar vendedores según rubro seleccionado (MASTER) o empresa (ADMIN)
+async function cargarVendedores() {
+  if (props.userRole === 'MASTER') {
+    if (!rubro.value) {
+      vendedores.value = [];
+      return;
+    }
+    try {
+      const vendedoresResponse = await usuariosApi.listVendedoresByRubro(rubro.value);
+      vendedores.value = vendedoresResponse;
+    } catch (error) {
+      console.error('Error al cargar vendedores:', error);
+    }
+  } else {
+    if (!props.userEmpresaId) return;
+    try {
+      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(props.userEmpresaId);
+      vendedores.value = vendedoresResponse;
+    } catch (error) {
+      console.error('Error al cargar vendedores:', error);
+    }
+  }
+}
+
+// Cuando cambia el rubro (MASTER), recargar vendedores
+watch(rubro, () => {
+  if (props.userRole === 'MASTER') {
+    vendedorAsignadoId.value = '';
+    cargarVendedores();
+  }
 });
 
 const isValid = computed(() => {
@@ -91,29 +136,9 @@ const isValid = computed(() => {
 });
 
 onMounted(async () => {
-  await cargarDatos();
+  await cargarTiposCliente();
+  await cargarVendedores();
 });
-
-async function cargarDatos() {
-  // Para MASTER: usar empresaId del lead. Para ADMIN: usar empresaId del usuario.
-  const empresaIdParaDatos = props.userRole === 'MASTER' ? props.lead.empresaId : props.userEmpresaId;
-
-  try {
-    const tiposResponse = await tiposClienteApi.list(empresaIdParaDatos);
-    tiposCliente.value = tiposResponse;
-  } catch (error) {
-    console.error('Error al cargar tipos de cliente:', error);
-  }
-
-  if (empresaIdParaDatos) {
-    try {
-      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(empresaIdParaDatos);
-      vendedores.value = vendedoresResponse;
-    } catch (error) {
-      console.error('Error al cargar vendedores:', error);
-    }
-  }
-}
 
 function handleSubmit() {
   if (!isValid.value) return;

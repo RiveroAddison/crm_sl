@@ -5,6 +5,13 @@ export type CreateTipoClienteInput = { nombre: string };
 export type UpdateTipoClienteInput = { nombre?: string; activo?: boolean };
 
 export async function listTiposCliente(context: RequestContext, empresaIdOverride?: string) {
+  // MASTER sin empresaIdOverride: traer todos
+  if (context.rol === 'MASTER' && !empresaIdOverride) {
+    return prisma.tipoCliente.findMany({
+      where: { activo: true },
+      orderBy: { nombre: 'asc' }
+    });
+  }
   const empresaId = empresaIdOverride || context.tenantId;
   return prisma.tipoCliente.findMany({
     where: { empresaId, activo: true },

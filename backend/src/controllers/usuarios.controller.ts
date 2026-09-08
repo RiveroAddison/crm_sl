@@ -430,6 +430,87 @@ export async function listVendedoresByEmpresa(req: Request, res: Response) {
   }
 }
 
+export async function listVendedoresByRubro(req: Request, res: Response) {
+  try {
+    const context = await getRequestContext(req);
+    if (!context) {
+      return res.status(403).json({ success: false, data: null, error: 'No autorizado' });
+    }
+
+    const { rubro } = req.query;
+    if (!rubro || typeof rubro !== 'string') {
+      return res.status(400).json({ success: false, data: null, error: 'rubro es requerido' });
+    }
+
+    // Solo MASTER puede buscar vendedores por rubro
+    if (context.rol !== 'MASTER') {
+      return res.status(403).json({ success: false, data: null, error: 'Solo MASTER puede buscar vendedores por rubro' });
+    }
+
+    // Mapeo de valor rubro a nombre de empresa
+    const rubroToNombre: Record<string, string> = {
+      'COMBUSTIBLE': 'Combustible',
+      'LUBRICANTES': 'Lubricantes',
+      'AUTOPARTES': 'Autopartes',
+      'TRANSPORTE': 'Transporte',
+      'ALIMENTOS_BALANCEADOS': 'Alimentos Balanceados',
+      'ALIMENTOS_CONGELADOS': 'Alimentos Congelados',
+    };
+
+    const rubroNombre = rubroToNombre[rubro] || rubro;
+
+    // Buscar empresas con ese rubro
+    const empresasConRubro = await prisma.empresa.findMany({
+      where: { rubro: rubroNombre, activo: true },
+      select: { id: true }
+    });
+
+    const empresaIds = empresasConRubro.map(e => e.id);
+
+    if (empresaIds.length === 0) {
+      return res.json({ success: true, data: [], error: '' });
+    }
+
+    // Buscar vendedores de esas empresas
+    const vendedores = await prisma.usuarioEmpresa.findMany({
+      where: {
+        empresaId: { in: empresaIds },
+        rol: 'VENDEDOR',
+        activo: true,
+        usuario: { activo: true }
+      },
+      include: {
+        usuario: {
+          select: { id: true, nombre: true, usuario: true, email: true }
+        }
+      },
+      orderBy: { usuario: { nombre: 'asc' } }
+    });
+
+    // Deduplicar por usuarioId (un vendedor puede estar en varias empresas del mismo rubro)
+    const seen = new Set<string>();
+    const unicos = vendedores.filter(ve => {
+      if (seen.has(ve.usuario.id)) return false;
+      seen.add(ve.usuario.id);
+      return true;
+    });
+
+    return res.json({
+      success: true,
+      data: unicos.map(ve => ({
+        id: ve.usuario.id,
+        nombre: ve.usuario.nombre,
+        usuario: ve.usuario.usuario,
+        email: ve.usuario.email
+      })),
+      error: ''
+    });
+  } catch (error) {
+    console.error('Error al listar vendedores por rubro:', error);
+    return res.status(500).json({ success: false, data: null, error: 'Error al listar vendedores por rubro' });
+  }
+}
+
 export async function remove(req: Request, res: Response) {
   try {
     const context = await getMasterOrAdminContext(req);
