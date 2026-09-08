@@ -82,3 +82,13 @@ export type RefreshData = z.infer<typeof RefreshDataSchema>;
 /** --- /logout --- */
 export const LogoutDataSchema = z.object({ message: z.string() });
 export const LogoutResponseSchema = ApiEnvelopeSchema(LogoutDataSchema);
+
+/** --- /switch-empresa (MASTER) --- */
+export const SwitchEmpresaDataSchema = z.object({
+  accessToken: z.string().min(1),
+  tenantId: UuidSchema,
+  empresa: EmpresaAuthSchema,
+  rol: RolSchema,
+});
+export const SwitchEmpresaResponseSchema = ApiEnvelopeSchema(SwitchEmpresaDataSchema);
+export type SwitchEmpresaData = z.infer<typeof SwitchEmpresaDataSchema>;

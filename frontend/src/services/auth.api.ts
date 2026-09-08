@@ -9,6 +9,7 @@ import {
   MeResponseSchema,
   Paso1LoginResponseSchema,
   Paso2LoginResponseSchema,
+  SwitchEmpresaResponseSchema,
   RefreshResponseSchema,
   LogoutResponseSchema,
 } from '../domain/auth';
@@ -31,13 +32,18 @@ export const authApi = {
     return Paso2LoginResponseSchema.parse(data);
   },
 
+  /** MASTER: cambia de empresa sin re-login. */
+  async switchEmpresa(empresaId: string) {
+    const { data } = await http.post('/api/auth/switch-empresa', { empresaId }, { _skipRefresh: true });
+    return SwitchEmpresaResponseSchema.parse(data);
+  },
+
   /** Sesion actual (cookie httpOnly adjunta). Devuelve null si no hay sesion. */
   async me(): Promise<MeData | null> {
     try {
       const { data } = await http.get('/api/auth/me');
       return MeResponseSchema.parse(data).data;
     } catch (err) {
-      // 401 = no autenticado; el resto de errores se propaga
       if ((err as { status?: number })?.status === 401) return null;
       throw err;
     }

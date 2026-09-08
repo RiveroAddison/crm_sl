@@ -159,6 +159,110 @@ export async function selectContext(req: Request, res: Response) {
   }
 }
 
+const switchEmpresaSchema = z.object({ empresaId: z.string().uuid() });
+
+export async function switchEmpresa(req: Request, res: Response) {
+  try {
+    const token = getAccessTokenFromReq(req);
+    if (!token) {
+      return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    }
+
+    const payload = verifyToken(token);
+    if (payload.tokenType !== 'ACCESS') {
+      return res.status(401).json({ success: false, data: null, error: 'Token invalido' });
+    }
+
+    const parsed = switchEmpresaSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, data: null, error: 'empresaId requerido' });
+    }
+
+    // Verificar que el usuario sea MASTER
+    const user = await prisma.usuario.findUnique({
+      where: { id: payload.userId },
+      include: {
+        usuarioEmpresas: {
+          where: { activo: true },
+          include: { empresa: true }
+        }
+      }
+    });
+
+    if (!user?.activo) {
+      return res.status(401).json({ success: false, data: null, error: 'Usuario inactivo' });
+    }
+
+    const hasMaster = user.usuarioEmpresas.some(ue => ue.rol === 'MASTER');
+    if (!hasMaster) {
+      return res.status(403).json({ success: false, data: null, error: 'Solo usuarios MASTER pueden cambiar de empresa' });
+    }
+
+    // Verificar acceso a la empresa solicitada
+    const access = user.usuarioEmpresas.find(ue => ue.empresaId === parsed.data.empresaId);
+    if (!access || !access.empresa.activo) {
+      return res.status(403).json({ success: false, data: null, error: 'Sin acceso a la empresa seleccionada' });
+    }
+
+    const rol = access.rol;
+
+    // Revocar refresh token anterior (familia)
+    const oldRefresh = getRefreshTokenFromReq(req);
+    if (oldRefresh) {
+      try {
+        const oldPayload = verifyToken(oldRefresh) as RefreshTokenPayload;
+        if (oldPayload.tokenType === 'REFRESH') {
+          await prisma.refreshToken.updateMany({
+            where: { familiaId: oldPayload.fid, revokedAt: null },
+            data: { revokedAt: new Date() }
+          });
+        }
+      } catch { /* ignorar */ }
+    }
+
+    // Crear nuevos tokens
+    const accessToken = signAccessToken(payload.userId, parsed.data.empresaId, rol);
+    const refreshRecord = await prisma.refreshToken.create({
+      data: {
+        tokenHash: 'pending',
+        familiaId: generateTokenId(),
+        userId: payload.userId,
+        tenantId: parsed.data.empresaId,
+        rol,
+        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+        ...clientMeta(req),
+      },
+    });
+    const refreshToken = signRefreshToken({
+      jti: refreshRecord.id,
+      userId: payload.userId,
+      tenantId: parsed.data.empresaId,
+      rol,
+      familiaId: refreshRecord.familiaId,
+    });
+    await prisma.refreshToken.update({
+      where: { id: refreshRecord.id },
+      data: { tokenHash: hashToken(refreshToken) },
+    });
+
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, refreshToken);
+
+    return res.json({
+      success: true,
+      data: {
+        accessToken,
+        tenantId: parsed.data.empresaId,
+        empresa: { id: access.empresa.id, nombre: access.empresa.nombre, rubro: access.empresa.rubro, direccion: access.empresa.direccion, telefono: access.empresa.telefono },
+        rol,
+      },
+      error: '',
+    });
+  } catch {
+    return res.status(500).json({ success: false, data: null, error: 'Error al cambiar de empresa' });
+  }
+}
+
 export async function refresh(req: Request, res: Response) {
   const rawRefresh = getRefreshTokenFromReq(req) || (req.body?.refreshToken as string | undefined);
   if (!rawRefresh) {

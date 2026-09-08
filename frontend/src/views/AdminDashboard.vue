@@ -513,6 +513,19 @@ function dropProspect(etapa: EtapaOportunidad) {
   draggingId.value = null;
 }
 
+async function handleSwitchEmpresa(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  const nuevaEmpresaId = select.value;
+  if (!nuevaEmpresaId || nuevaEmpresaId === auth.tenantId) return;
+  try {
+    await auth.switchEmpresa(nuevaEmpresaId);
+    await adminMaster.loadData();
+    await leads.load();
+  } catch (err) {
+    alert(err instanceof Error ? err.message : 'Error al cambiar de empresa');
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     prospects.load(),
@@ -560,7 +573,23 @@ onBeforeUnmount(() => {
 
         <!-- Header Actions & Profile -->
         <div class="flex items-center flex-wrap gap-2.5 sm:gap-3">
-          <div class="hidden lg:flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/15 text-xs text-blue-100">
+          <!-- MASTER: selector de empresa -->
+          <div v-if="auth.rol === 'MASTER'" class="hidden lg:flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/15 text-xs text-blue-100">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Empresa:</span>
+            <select
+              :value="auth.tenantId"
+              @change="handleSwitchEmpresa"
+              class="bg-white/10 border border-white/20 rounded px-2 py-1 text-xs text-white font-medium outline-none cursor-pointer max-w-[180px]"
+            >
+              <option v-for="e in auth.empresas" :key="e.id" :value="e.id" class="text-slate-900 bg-white">
+                {{ e.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <!-- ADMIN/VENDEDOR: empresa fija -->
+          <div v-else class="hidden lg:flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/15 text-xs text-blue-100">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span>Empresa activa:</span>
             <strong class="text-white">{{ auth.empresa?.nombre }}</strong>

@@ -89,6 +89,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function switchEmpresa(empresaId: string): Promise<void> {
+    error.value = '';
+    try {
+      const res = await authApi.switchEmpresa(empresaId);
+      empresa.value = res.data.empresa;
+      tenantId.value = res.data.tenantId;
+      rol.value = res.data.rol;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'No fue posible cambiar de empresa';
+      throw cause;
+    }
+  }
+
   async function logout(): Promise<void> {
     try {
       await authApi.logout();
@@ -112,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     hydrate,
     login,
     selectEmpresa,
+    switchEmpresa,
     logout,
     clearLocalSession,
   };
