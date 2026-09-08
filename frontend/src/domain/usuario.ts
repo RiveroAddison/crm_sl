@@ -5,6 +5,7 @@ import { ApiEnvelopeSchema, RolSchema, UuidSchema } from './api';
 export const EmpresaSchema = z.object({
   id: UuidSchema,
   nombre: z.string().min(1),
+  rubro: z.string().nullable().optional(),
   profitDbHost: z.string().nullable().optional(),
   profitDbName: z.string().nullable().optional(),
   profitDbUser: z.string().nullable().optional(),
@@ -17,6 +18,7 @@ export type Empresa = z.infer<typeof EmpresaSchema>;
 
 export const EmpresaInputSchema = z.object({
   nombre: z.string().min(1).max(100),
+  rubro: z.string().max(100).nullable().optional(),
   profitDbHost: z.string().max(100).nullable().optional(),
   profitDbName: z.string().max(100).nullable().optional(),
   profitDbUser: z.string().max(100).nullable().optional(),

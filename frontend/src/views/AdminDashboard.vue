@@ -1768,6 +1768,7 @@ onBeforeUnmount(() => {
     :user-role="auth.user?.rol || ''"
     :user-empresa-id="auth.tenantId || ''"
     :user-empresa-rubro="auth.empresa?.rubro || ''"
+    :lead-empresa-rubro="adminMaster.empresas.find(e => e.id === selectedLeadForAction?.empresaId)?.rubro || ''"
     @submit="handleApproveLead"
     @close="showApproveModal = false; selectedLeadForAction = null"
   />

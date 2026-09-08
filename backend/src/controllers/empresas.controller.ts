@@ -7,6 +7,7 @@ import { syncEmpresasFromGrupo } from '../services/empresas.service.js';
 
 const empresaSchema = z.object({
   nombre: z.string().min(1).max(100),
+  rubro: z.string().max(100).optional().nullable(),
   rif: z.string().max(20).optional().nullable(),
   profitDbHost: z.string().max(100).optional().nullable(),
   profitDbName: z.string().max(100).optional().nullable(),

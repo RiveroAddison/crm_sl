@@ -11,6 +11,7 @@ const props = defineProps<{
   userRole: string;
   userEmpresaId: string;
   userEmpresaRubro: string;
+  leadEmpresaRubro?: string;
 }>();
 
 const emit = defineEmits<{
@@ -49,8 +50,14 @@ const rubroEmpresaToValue: Record<string, string> = {
 };
 
 const rubros = computed(() => {
-  if (props.userRole === 'MASTER') return allRubros;
-  // ADMIN: si tiene rubro definido, solo ese; si no, todos
+  if (props.userRole === 'MASTER') {
+    const rubroFuente = props.leadEmpresaRubro || props.userEmpresaRubro;
+    if (!rubroFuente) return allRubros;
+    const rubroValue = rubroEmpresaToValue[rubroFuente];
+    if (!rubroValue) return allRubros;
+    return allRubros.filter(r => r.value === rubroValue);
+  }
+  // ADMIN: solo su rubro
   if (!props.userEmpresaRubro) return allRubros;
   const rubroValue = rubroEmpresaToValue[props.userEmpresaRubro];
   if (!rubroValue) return allRubros;
