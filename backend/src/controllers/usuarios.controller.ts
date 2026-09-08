@@ -134,10 +134,10 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado' });
     }
 
-    // ADMIN solo puede tener 1 empresa
-    const hasAdmin = empresas.some(e => e.rol === 'ADMIN');
-    if (hasAdmin && empresas.length > 1) {
-      return res.status(400).json({ success: false, data: null, error: 'Un usuario ADMIN solo puede estar asignado a una empresa' });
+    // ADMIN y VENDEDOR solo pueden tener 1 empresa
+    const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
+    if (hasSingleRole && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -213,10 +213,10 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado por otro usuario' });
     }
 
-    // ADMIN solo puede tener 1 empresa
-    const hasAdmin = empresas.some(e => e.rol === 'ADMIN');
-    if (hasAdmin && empresas.length > 1) {
-      return res.status(400).json({ success: false, data: null, error: 'Un usuario ADMIN solo puede estar asignado a una empresa' });
+    // ADMIN y VENDEDOR solo pueden tener 1 empresa
+    const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
+    if (hasSingleRole && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
     }
 
     const dataToUpdate: any = {
