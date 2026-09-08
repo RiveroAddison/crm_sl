@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import type { Empresa } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { buildProfitConfig, connectWithRetry } from '../lib/profitConnection.js';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -13,25 +14,6 @@ export type EmpresasSyncResult = {
   unchanged: number;
   errors: string[];
 };
-
-// ---------------------------------------------------------------------------
-// Helpers de conexión
-// ---------------------------------------------------------------------------
-
-function connectionConfig(empresa: Empresa): sql.config {
-  if (!empresa.profitDbHost || !empresa.profitDbName || !empresa.profitDbUser || !empresa.profitDbPassword) {
-    throw new Error(`La empresa ${empresa.nombre} no tiene configurada su conexión Profit`);
-  }
-  return {
-    server: empresa.profitDbHost,
-    database: empresa.profitDbName,
-    user: empresa.profitDbUser,
-    password: empresa.profitDbPassword,
-    options: { encrypt: false, trustServerCertificate: true },
-    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
-    requestTimeout: 15000
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Sincronización de empresas desde ad_grup
@@ -61,7 +43,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
   // 2. Conectar a ad_grup y leer Tempresas
   let pool: sql.ConnectionPool | null = null;
   try {
-    pool = await sql.connect(connectionConfig(grupo));
+    pool = await connectWithRetry(buildProfitConfig(grupo));
     const request = pool.request();
     const rs = await request.query('SELECT cod_emp, nombre, rif FROM Tempresas');
 

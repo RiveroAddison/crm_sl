@@ -2,6 +2,7 @@ import sql from 'mssql';
 import * as bcrypt from 'bcryptjs';
 import type { Empresa } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { buildProfitConfig, connectWithRetry } from '../lib/profitConnection.js';
 
 /**
  * Servicio de sincronización con Profit Plus (MSSQL).
@@ -47,23 +48,8 @@ export type ProfitDiagnostic = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers de conexión
+// Helpers de conexión (ver src/lib/profitConnection.ts)
 // ---------------------------------------------------------------------------
-
-function connectionConfig(empresa: Empresa): sql.config {
-  if (!empresa.profitDbHost || !empresa.profitDbName || !empresa.profitDbUser || !empresa.profitDbPassword) {
-    throw new Error(`La empresa ${empresa.nombre} no tiene configurada su conexión Profit`);
-  }
-  return {
-    server: empresa.profitDbHost,
-    database: empresa.profitDbName,
-    user: empresa.profitDbUser,
-    password: empresa.profitDbPassword,
-    options: { encrypt: false, trustServerCertificate: true },
-    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
-    requestTimeout: 15000
-  };
-}
 
 function emptyStats(): SyncStats {
   return { read: 0, inserted: 0, updated: 0, skipped: 0, errors: 0, samples: [] };
@@ -132,7 +118,7 @@ function emailForSeller(name: string): string {
 export async function testConect(empresa: Empresa): Promise<ProfitDiagnostic> {
   let pool: sql.ConnectionPool | null = null;
   try {
-    pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
+    pool = await connectWithRetry(buildProfitConfig(empresa));
 
     const versionRes = await pool.request().query<{ version: string; serverName: string }>(`
       SELECT @@VERSION AS version, @@SERVERNAME AS serverName;
@@ -140,16 +126,16 @@ export async function testConect(empresa: Empresa): Promise<ProfitDiagnostic> {
     const versionRow = versionRes.recordset?.[0];
 
     const vendorRes = await pool.request().query<{ total: number }>(`
-      SELECT COUNT(*) AS total FROM AD_DIST.DBO.CRM_VENDEDOR;
+      SELECT COUNT(*) AS total FROM dbo.CRM_VENDEDOR;
     `);
     const clienteRes = await pool.request().query<{ total: number }>(`
-      SELECT COUNT(*) AS total FROM AD_DIST.DBO.CRM_CLIENTE;
+      SELECT COUNT(*) AS total FROM dbo.CRM_CLIENTE;
     `);
     const ventaRes = await pool.request().query<{ total: number; min: Date | null; max: Date | null }>(`
       SELECT COUNT(*) AS total,
              MIN(fecha) AS min,
              MAX(fecha) AS max
-        FROM AD_DIST.DBO.CRM_VENTAS;
+        FROM dbo.CRM_VENTAS;
     `);
 
     const v = ventaRes.recordset?.[0];
@@ -195,10 +181,10 @@ export async function syncSellersForEmpresa(empresa: Empresa): Promise<SyncResul
   let pool: sql.ConnectionPool | null = null;
 
   try {
-    pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
+    pool = await connectWithRetry(buildProfitConfig(empresa));
     const res = await pool
       .request()
-      .query<ProfitVendedorRow>('SELECT cod, nombre, correo FROM AD_DIST.DBO.CRM_VENDEDOR;');
+      .query<ProfitVendedorRow>('SELECT cod, nombre, correo FROM dbo.CRM_VENDEDOR;');
     const rows = res.recordset ?? [];
     stats.read = rows.length;
 
@@ -242,8 +228,9 @@ export async function syncSellersForEmpresa(empresa: Empresa): Promise<SyncResul
           if (!usuario) {
             // 3. Crear Usuario nuevo con contrasena bcrypt "1234".
             const passwordHash = await bcrypt.hash('1234', 10);
+            const usuarioLogin = `${codProfit}-${nombre}`.trim();
             usuario = await tx.usuario.create({
-              data: { nombre, email: correo.toLowerCase(), password: passwordHash, activo: true }
+              data: { usuario: usuarioLogin, nombre, email: correo.toLowerCase(), password: passwordHash, activo: true, mustChangePassword: true }
             });
           } else {
             usuario = await tx.usuario.update({
@@ -308,11 +295,11 @@ export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResu
   let pool: sql.ConnectionPool | null = null;
 
   try {
-    pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
+    pool = await connectWithRetry(buildProfitConfig(empresa));
     const res = await pool
       .request()
       .query<ProfitClienteRow>(
-        'SELECT cod, rif, razon_social, direccion, telefonos, vendedor, correo, tipo_cliente FROM AD_DIST.DBO.CRM_CLIENTE;'
+        'SELECT cod, rif, razon_social, direccion, telefonos, vendedor, correo, tipo_cliente FROM dbo.CRM_CLIENTE;'
       );
     const rows = res.recordset ?? [];
     stats.read = rows.length;
@@ -466,7 +453,7 @@ export async function syncVentasForEmpresa(empresa: Empresa): Promise<SyncResult
   let pool: sql.ConnectionPool | null = null;
 
   try {
-    pool = await new sql.ConnectionPool(connectionConfig(empresa)).connect();
+    pool = await connectWithRetry(buildProfitConfig(empresa));
     const { fechaInicio, fechaFin } = computeSalesWindow();
 
     const req = pool.request();
@@ -482,7 +469,7 @@ export async function syncVentasForEmpresa(empresa: Empresa): Promise<SyncResult
              monto_neto,
              cod_Cliente,
              cod_vendedor
-        FROM AD_DIST.DBO.CRM_VENTAS
+        FROM dbo.CRM_VENTAS
        WHERE fecha >= @fechaInicio
          AND fecha <  @fechaFin;
     `);

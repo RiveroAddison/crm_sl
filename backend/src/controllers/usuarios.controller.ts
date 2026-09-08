@@ -11,6 +11,7 @@ const usuarioEmpresaSchema = z.object({
 
 const createUsuarioSchema = z.object({
   nombre: z.string().min(1).max(100),
+  usuario: z.string().min(1).max(100),
   email: z.string().email().max(100),
   password: z.string().min(6).max(100),
   activo: z.boolean().default(true),
@@ -19,6 +20,7 @@ const createUsuarioSchema = z.object({
 
 const updateUsuarioSchema = z.object({
   nombre: z.string().min(1).max(100),
+  usuario: z.string().min(1).max(100),
   email: z.string().email().max(100),
   password: z.string().max(100).optional().nullable(),
   activo: z.boolean(),
@@ -53,6 +55,7 @@ export async function list(req: Request, res: Response) {
       data: usuarios.map(u => ({
         id: u.id,
         nombre: u.nombre,
+        usuario: u.usuario,
         email: u.email,
         activo: u.activo,
         createdAt: u.createdAt,
@@ -97,6 +100,7 @@ export async function get(req: Request, res: Response) {
       data: {
         id: usuario.id,
         nombre: usuario.nombre,
+        usuario: usuario.usuario,
         email: usuario.email,
         activo: usuario.activo,
         empresas: usuario.usuarioEmpresas.map(ue => ({
@@ -126,12 +130,18 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'Datos de entrada inválidos', details: parsed.error.format() });
     }
 
-    const { nombre, email, password, activo, empresas } = parsed.data;
+    const { nombre, usuario, email, password, activo, empresas } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsuario = usuario.trim();
 
     const existing = await prisma.usuario.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado' });
+    }
+
+    const existingUsuario = await prisma.usuario.findUnique({ where: { usuario: normalizedUsuario } });
+    if (existingUsuario) {
+      return res.status(400).json({ success: false, data: null, error: 'El nombre de usuario ya está registrado' });
     }
 
     // ADMIN y VENDEDOR solo pueden tener 1 empresa
@@ -146,6 +156,7 @@ export async function create(req: Request, res: Response) {
       const user = await tx.usuario.create({
         data: {
           nombre,
+          usuario: normalizedUsuario,
           email: normalizedEmail,
           password: passwordHash,
           activo
@@ -171,6 +182,7 @@ export async function create(req: Request, res: Response) {
       data: {
         id: newUser.id,
         nombre: newUser.nombre,
+        usuario: newUser.usuario,
         email: newUser.email,
         activo: newUser.activo
       },
@@ -195,8 +207,9 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'Datos de entrada inválidos' });
     }
 
-    const { nombre, email, password, activo, empresas } = parsed.data;
+    const { nombre, usuario, email, password, activo, empresas } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsuario = usuario.trim();
 
     const user = await prisma.usuario.findUnique({ where: { id } });
     if (!user) {
@@ -213,6 +226,16 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado por otro usuario' });
     }
 
+    const existingUsuario = await prisma.usuario.findFirst({
+      where: {
+        usuario: normalizedUsuario,
+        id: { not: id }
+      }
+    });
+    if (existingUsuario) {
+      return res.status(400).json({ success: false, data: null, error: 'El nombre de usuario ya está registrado por otro usuario' });
+    }
+
     // ADMIN y VENDEDOR solo pueden tener 1 empresa
     const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
     if (hasSingleRole && empresas.length > 1) {
@@ -221,6 +244,7 @@ export async function update(req: Request, res: Response) {
 
     const dataToUpdate: any = {
       nombre,
+      usuario: normalizedUsuario,
       email: normalizedEmail,
       activo
     };
@@ -263,6 +287,7 @@ export async function update(req: Request, res: Response) {
       data: {
         id,
         nombre,
+        usuario: normalizedUsuario,
         email: normalizedEmail,
         activo,
         empresas: usuarioEmpresas.map(ue => ({
@@ -301,7 +326,7 @@ export async function listVendedoresByEmpresa(req: Request, res: Response) {
       },
       include: {
         usuario: {
-          select: { id: true, nombre: true, email: true }
+          select: { id: true, nombre: true, usuario: true, email: true }
         }
       },
       orderBy: { usuario: { nombre: 'asc' } }
@@ -312,6 +337,7 @@ export async function listVendedoresByEmpresa(req: Request, res: Response) {
       data: vendedores.map(ve => ({
         id: ve.usuario.id,
         nombre: ve.usuario.nombre,
+        usuario: ve.usuario.usuario,
         email: ve.usuario.email
       })),
       error: ''

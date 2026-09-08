@@ -47,6 +47,7 @@ export type UsuarioEmpresa = z.infer<typeof UsuarioEmpresaSchema>;
 export const UsuarioSchema = z.object({
   id: UuidSchema,
   nombre: z.string(),
+  usuario: z.string(),
   email: z.string().email(),
   activo: z.boolean(),
   createdAt: z.string().optional(),
@@ -56,6 +57,7 @@ export type Usuario = z.infer<typeof UsuarioSchema>;
 
 export const UsuarioInputSchema = z.object({
   nombre: z.string().min(1).max(100),
+  usuario: z.string().min(1).max(100),
   email: z.string().email().max(100),
   password: z.string().min(6).max(100),
   activo: z.boolean().default(true),
@@ -67,6 +69,7 @@ export type UsuarioInput = z.infer<typeof UsuarioInputSchema>;
 
 export const UsuarioUpdateInputSchema = z.object({
   nombre: z.string().min(1).max(100),
+  usuario: z.string().min(1).max(100),
   email: z.string().email().max(100),
   password: z.string().max(100).nullable().optional(),
   activo: z.boolean(),

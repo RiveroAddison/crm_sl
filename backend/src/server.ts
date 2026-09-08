@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { openapi } from './docs/openapi.js';
 import authRouter from './routes/auth.routes.js';
@@ -57,6 +57,23 @@ app.use('/api/tipos-cliente', tiposClienteRouter);
 // Middleware final: captura cualquier error de CORS lanzado por el middleware de cors
 // y responde 403 con un JSON en lugar del HTML por defecto de Express.
 app.use(corsErrorHandler);
+
+// Error handler global: captura errores MSSQL no atrapados y errores internos.
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[server] Error no capturado:', err);
+  if (err.message?.includes('Failed to connect') || err.message?.includes('ConnectionError')) {
+    return res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Servicio de base de datos no disponible temporalmente',
+    });
+  }
+  return res.status(500).json({
+    success: false,
+    data: null,
+    error: 'Error interno del servidor',
+  });
+});
 
 app.listen(port, () => {
   logCorsSummary();

@@ -60,13 +60,15 @@ enum TipoActividadLead {
 
 /// Modelo para los usuarios de la plataforma
 model Usuario {
-  id              String           @id @default(uuid())
-  email           String           @unique
-  nombre          String
-  password        String
-  activo          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                  String           @id @default(uuid())
+  usuario             String           @unique @default("")
+  email               String           @unique
+  nombre              String
+  password            String
+  activo              Boolean          @default(true)
+  mustChangePassword  Boolean          @default(false)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   usuarioEmpresas UsuarioEmpresa[]
   oportunidades   Oportunidad[]

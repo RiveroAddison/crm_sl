@@ -17,14 +17,14 @@ export type EmpresaAuth = z.infer<typeof EmpresaAuthSchema>;
 export const UsuarioAuthSchema = z.object({
   id: UuidSchema,
   nombre: z.string().min(1),
-  email: z.string().email(),
+  usuario: z.string().min(1),
   rolGlobal: RolSchema,
 });
 export type UsuarioAuth = z.infer<typeof UsuarioAuthSchema>;
 
 /** --- Paso 1: login (email + password) --- */
 export const LoginInputSchema = z.object({
-  email: z.string().email().max(100),
+  usuario: z.string().min(1).max(100),
   password: z.string().min(1).max(100),
 });
 export type LoginInput = z.infer<typeof LoginInputSchema>;

@@ -38,6 +38,7 @@ const actividadesOportunidadLoading = ref<string[]>([]);
 const editingUserId = ref<string | null>(null);
 const userForm = ref({
   nombre: '',
+  usuario: '',
   email: '',
   password: '',
   activo: true,
@@ -63,6 +64,7 @@ function openCreateUserModal() {
   editingUserId.value = null;
   userForm.value = {
     nombre: '',
+    usuario: '',
     email: '',
     password: '',
     activo: true,
@@ -75,6 +77,7 @@ function openEditUserModal(u: any) {
   editingUserId.value = u.id;
   userForm.value = {
     nombre: u.nombre,
+    usuario: u.usuario,
     email: u.email,
     password: '',
     activo: u.activo,
@@ -1243,7 +1246,8 @@ onBeforeUnmount(() => {
             <table class="w-full text-left text-xs text-slate-700">
               <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th class="px-4 py-3.5">Nombre / Usuario</th>
+                  <th class="px-4 py-3.5">Nombre</th>
+                  <th class="px-4 py-3.5">Usuario</th>
                   <th class="px-4 py-3.5">Correo Electrónico</th>
                   <th class="px-4 py-3.5">Empresas Asignadas &amp; Roles</th>
                   <th class="px-4 py-3.5 text-center">Estado</th>
@@ -1258,7 +1262,8 @@ onBeforeUnmount(() => {
                     </span>
                     <span>{{ u.nombre }}</span>
                   </td>
-                  <td class="px-4 py-3.5 font-mono text-slate-600">{{ u.email }}</td>
+                  <td class="px-4 py-3.5 font-mono text-slate-600 text-[11px]">{{ u.usuario }}</td>
+                  <td class="px-4 py-3.5 font-mono text-slate-400 text-[11px]">{{ u.email }}</td>
                   <td class="px-4 py-3.5">
                     <div class="flex flex-wrap gap-1">
                       <span
@@ -1522,6 +1527,11 @@ onBeforeUnmount(() => {
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Completo *</label>
             <input v-model="userForm.nombre" required placeholder="Ej: Carlos Silva" class="w-full">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nombre de Usuario (para login) *</label>
+            <input v-model="userForm.usuario" required placeholder="Ej: V001-Carlos Silva" class="w-full">
           </div>
 
           <div>

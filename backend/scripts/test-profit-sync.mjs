@@ -108,13 +108,13 @@ function makeRequest() {
           }],
         };
       }
-      if (upper.includes('FROM AD_DIST.DBO.CRM_VENDEDOR')) {
+      if (upper.includes('FROM dbo.CRM_VENDEDOR')) {
         return { recordset: data.CRM_VENDEDOR };
       }
-      if (upper.includes('FROM AD_DIST.DBO.CRM_CLIENTE')) {
+      if (upper.includes('FROM dbo.CRM_CLIENTE')) {
         return { recordset: data.CRM_CLIENTE };
       }
-      if (upper.includes('FROM AD_DIST.DBO.CRM_VENTAS')) {
+      if (upper.includes('FROM dbo.CRM_VENTAS')) {
         const fechaInicio = params.fechaInicio;
         const fechaFin = params.fechaFin;
         const filtered = data.CRM_VENTAS.filter((r) => {

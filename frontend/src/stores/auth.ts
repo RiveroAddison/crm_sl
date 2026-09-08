@@ -56,10 +56,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string): Promise<void> {
+  async function login(usuario: string, password: string): Promise<void> {
     error.value = '';
     try {
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({ usuario, password });
       user.value = res.data.user;
       empresas.value = res.data.empresasAsignadas;
       preAuthToken.value = res.data.preAuthToken;

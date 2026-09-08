@@ -7,14 +7,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'submit', credentials: { email: string; password: string }): void;
+  (e: 'submit', credentials: { usuario: string; password: string }): void;
 }>();
 
-const email = ref('');
+const usuario = ref('');
 const password = ref('');
 
 function handleSubmit() {
-  emit('submit', { email: email.value, password: password.value });
+  emit('submit', { usuario: usuario.value, password: password.value });
 }
 </script>
 
@@ -22,11 +22,11 @@ function handleSubmit() {
   <form @submit.prevent="handleSubmit">
     <span class="eyebrow">Acceso seguro</span>
     <h2>Inicia sesión</h2>
-    <p class="muted">Usa tus credenciales globales para continuar.</p>
+    <p class="muted">Usa tus credenciales para continuar.</p>
     
     <label>
-      Correo electrónico
-      <input v-model="email" type="email" autocomplete="email" required placeholder="nombre@empresa.com">
+      Usuario
+      <input v-model="usuario" type="text" autocomplete="username" required placeholder="Código y nombre">
     </label>
     
     <label>

@@ -15,11 +15,11 @@ onMounted(() => {
   void auth.hydrate();
 });
 
-async function handleLogin(credentials: { email: string; password: string }) {
+async function handleLogin(credentials: { usuario: string; password: string }) {
   error.value = ''; 
   loading.value = true;
   try { 
-    await auth.login(credentials.email, credentials.password); 
+    await auth.login(credentials.usuario, credentials.password); 
   } catch (cause) { 
     error.value = cause instanceof Error ? cause.message : 'Error de autenticación'; 
   } finally { 

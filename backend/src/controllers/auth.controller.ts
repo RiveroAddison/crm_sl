@@ -25,7 +25,7 @@ import {
 const DUMMY_HASH = '$2a$10$e7qJtq986P4m20w8.H44u.Sg3P/j2Vv7xX3N8g9f.e/W1b2c3d4e5';
 
 const loginSchema = z.object({
-  email: z.string().email().max(100),
+  usuario: z.string().min(1).max(100),
   password: z.string().min(1).max(100),
 });
 
@@ -43,11 +43,11 @@ export async function login(req: Request, res: Response) {
     return res.status(400).json({ success: false, data: null, error: 'Credenciales con formato invalido' });
   }
 
-  const normalizedEmail = parsed.data.email.toLowerCase().trim();
+  const usuarioLogin = parsed.data.usuario.trim();
 
   try {
     const user = await prisma.usuario.findUnique({
-      where: { email: normalizedEmail },
+      where: { usuario: usuarioLogin },
       include: {
         usuarioEmpresas: {
           where: { activo: true },
@@ -60,7 +60,7 @@ export async function login(req: Request, res: Response) {
     const isPasswordValid = await bcrypt.compare(parsed.data.password, passwordHash);
 
     if (!user || !user.activo || !isPasswordValid) {
-      return res.status(401).json({ success: false, data: null, error: 'Correo o contrasena incorrectos' });
+      return res.status(401).json({ success: false, data: null, error: 'Usuario o contrasena incorrectos' });
     }
 
     const preAuthToken = signPreAuthToken(user.id);
@@ -80,7 +80,7 @@ export async function login(req: Request, res: Response) {
       success: true,
       data: {
         preAuthToken,
-        user: { id: user.id, nombre: user.nombre, email: user.email, rolGlobal },
+        user: { id: user.id, nombre: user.nombre, usuario: user.usuario, rolGlobal },
         empresasAsignadas,
       },
       error: '',
@@ -309,7 +309,7 @@ export async function me(req: Request, res: Response) {
       success: true,
       data: {
         token,
-        user: { id: user.id, email: user.email, nombre: user.nombre, rolGlobal },
+        user: { id: user.id, usuario: user.usuario, nombre: user.nombre, rolGlobal },
         tenantId: ctx.empresaId,
         tenantNombre: ctx.empresa.nombre,
         empresa: { id: ctx.empresa.id, nombre: ctx.empresa.nombre, rubro: ctx.empresa.rubro, direccion: ctx.empresa.direccion, telefono: ctx.empresa.telefono },

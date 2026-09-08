@@ -8,7 +8,7 @@ export const EmpresaAuthSchema = z.object({
 export const UsuarioAuthSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string().min(1),
-  email: z.string().email(),
+  usuario: z.string().min(1),
   rolGlobal: z.enum(['MASTER', 'ADMIN', 'VENDEDOR'])
 });
 
