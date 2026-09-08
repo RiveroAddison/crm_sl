@@ -49,17 +49,32 @@ const rubroEmpresaToValue: Record<string, string> = {
   'Alimentos Congelados': 'ALIMENTOS_CONGELADOS',
 };
 
+const normalizeRubroLookup = (value?: string | null) => {
+  if (!value) return '';
+
+  const exact = rubroEmpresaToValue[value.trim()];
+  if (exact) return exact;
+
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ');
+  const match = Object.entries(rubroEmpresaToValue).find(([label]) => {
+    return label.toLowerCase().replace(/\s+/g, ' ') === normalized;
+  });
+
+  return match?.[1] ?? '';
+};
+
 const rubros = computed(() => {
   if (props.userRole === 'MASTER') {
     const rubroFuente = props.leadEmpresaRubro || props.userEmpresaRubro;
     if (!rubroFuente) return allRubros;
-    const rubroValue = rubroEmpresaToValue[rubroFuente];
+    const rubroValue = normalizeRubroLookup(rubroFuente);
     if (!rubroValue) return allRubros;
     return allRubros.filter(r => r.value === rubroValue);
   }
-  // ADMIN: solo su rubro
+
+  // ADMIN: solo el rubro de la empresa activa
   if (!props.userEmpresaRubro) return allRubros;
-  const rubroValue = rubroEmpresaToValue[props.userEmpresaRubro];
+  const rubroValue = normalizeRubroLookup(props.userEmpresaRubro);
   if (!rubroValue) return allRubros;
   return allRubros.filter(r => r.value === rubroValue);
 });

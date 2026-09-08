@@ -1765,7 +1765,7 @@ onBeforeUnmount(() => {
     :lead="selectedLeadForAction"
     :loading="leads.loading"
     :error="leadActionError"
-    :user-role="auth.user?.rol || ''"
+    :user-role="auth.rol || ''"
     :user-empresa-id="auth.tenantId || ''"
     :user-empresa-rubro="auth.empresa?.rubro || ''"
     :lead-empresa-rubro="adminMaster.empresas.find(e => e.id === selectedLeadForAction?.empresaId)?.rubro || ''"
