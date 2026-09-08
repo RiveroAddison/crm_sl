@@ -22,7 +22,18 @@ export async function list(req: Request, res: Response) {
       return res.status(403).json({ success: false, data: null, error: 'No autorizado para gestionar empresas' });
     }
 
+    // MASTER ve todas, ADMIN solo las asignadas
+    let where: any = {};
+    if (context.rol === 'ADMIN') {
+      const asignadas = await prisma.usuarioEmpresa.findMany({
+        where: { usuarioId: context.userId, activo: true },
+        select: { empresaId: true }
+      });
+      where = { id: { in: asignadas.map(a => a.empresaId) } };
+    }
+
     const empresas = await prisma.empresa.findMany({
+      where,
       orderBy: { nombre: 'asc' }
     });
 
@@ -45,6 +56,17 @@ export async function get(req: Request, res: Response) {
     }
 
     const id = req.params.id as string;
+
+    // ADMIN solo puede ver empresas asignadas
+    if (context.rol === 'ADMIN') {
+      const access = await prisma.usuarioEmpresa.findFirst({
+        where: { usuarioId: context.userId, empresaId: id, activo: true }
+      });
+      if (!access) {
+        return res.status(403).json({ success: false, data: null, error: 'No tienes acceso a esta empresa' });
+      }
+    }
+
     const empresa = await prisma.empresa.findUnique({
       where: { id }
     });
@@ -99,6 +121,17 @@ export async function update(req: Request, res: Response) {
     }
 
     const id = req.params.id as string;
+
+    // ADMIN solo puede modificar empresas asignadas
+    if (context.rol === 'ADMIN') {
+      const access = await prisma.usuarioEmpresa.findFirst({
+        where: { usuarioId: context.userId, empresaId: id, activo: true }
+      });
+      if (!access) {
+        return res.status(403).json({ success: false, data: null, error: 'No tienes acceso a esta empresa' });
+      }
+    }
+
     const parsed = empresaSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ success: false, data: null, error: 'Datos inválidos' });
@@ -133,6 +166,17 @@ export async function remove(req: Request, res: Response) {
     }
 
     const id = req.params.id as string;
+
+    // ADMIN solo puede eliminar empresas asignadas
+    if (context.rol === 'ADMIN') {
+      const access = await prisma.usuarioEmpresa.findFirst({
+        where: { usuarioId: context.userId, empresaId: id, activo: true }
+      });
+      if (!access) {
+        return res.status(403).json({ success: false, data: null, error: 'No tienes acceso a esta empresa' });
+      }
+    }
+
     const exists = await prisma.empresa.findUnique({ where: { id } });
     if (!exists) {
       return res.status(404).json({ success: false, data: null, error: 'Empresa no encontrada' });

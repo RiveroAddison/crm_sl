@@ -34,7 +34,21 @@ export async function list(req: Request, res: Response) {
       return res.status(403).json({ success: false, data: null, error: 'No autorizado para gestionar usuarios' });
     }
 
+    // ADMIN solo ve usuarios de sus empresas
+    let usuarioFilter: any = {};
+    if (context.rol === 'ADMIN') {
+      const empresasAsignadas = await prisma.usuarioEmpresa.findMany({
+        where: { usuarioId: context.userId, activo: true },
+        select: { empresaId: true }
+      });
+      const empresaIds = empresasAsignadas.map(e => e.empresaId);
+      usuarioFilter = {
+        usuarioEmpresas: { some: { empresaId: { in: empresaIds }, activo: true } }
+      };
+    }
+
     const usuarios = await prisma.usuario.findMany({
+      where: usuarioFilter,
       include: {
         usuarioEmpresas: {
           include: {
@@ -144,10 +158,41 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El nombre de usuario ya está registrado' });
     }
 
+    // Validar que no haya empresas duplicadas
+    const empresaIds = empresas.map(e => e.empresaId);
+    const uniqueEmpresaIds = new Set(empresaIds);
+    if (empresaIds.length !== uniqueEmpresaIds.size) {
+      return res.status(400).json({ success: false, data: null, error: 'No se pueden asignar empresas duplicadas' });
+    }
+
+    // Validar que las empresas existan y estén activas
+    if (empresaIds.length > 0) {
+      const empresasExistentes = await prisma.empresa.findMany({
+        where: { id: { in: empresaIds }, activo: true },
+        select: { id: true }
+      });
+      if (empresasExistentes.length !== empresaIds.length) {
+        return res.status(400).json({ success: false, data: null, error: 'Una o más empresas seleccionadas no existen o están inactivas' });
+      }
+    }
+
     // ADMIN y VENDEDOR solo pueden tener 1 empresa
     const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
     if (hasSingleRole && empresas.length > 1) {
       return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
+    }
+
+    // ADMIN solo puede asignar usuarios a sus propias empresas
+    if (context.rol === 'ADMIN' && empresas.length > 0) {
+      const empresasAdmin = await prisma.usuarioEmpresa.findMany({
+        where: { usuarioId: context.userId, activo: true },
+        select: { empresaId: true }
+      });
+      const adminEmpresaIds = new Set(empresasAdmin.map(e => e.empresaId));
+      const fueraAlcance = empresas.filter(e => !adminEmpresaIds.has(e.empresaId));
+      if (fueraAlcance.length > 0) {
+        return res.status(403).json({ success: false, data: null, error: 'No puedes asignar usuarios a empresas fuera de tu alcance' });
+      }
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -236,10 +281,41 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El nombre de usuario ya está registrado por otro usuario' });
     }
 
+    // Validar que no haya empresas duplicadas
+    const empresaIds = empresas.map(e => e.empresaId);
+    const uniqueEmpresaIds = new Set(empresaIds);
+    if (empresaIds.length !== uniqueEmpresaIds.size) {
+      return res.status(400).json({ success: false, data: null, error: 'No se pueden asignar empresas duplicadas' });
+    }
+
+    // Validar que las empresas existan y estén activas
+    if (empresaIds.length > 0) {
+      const empresasExistentes = await prisma.empresa.findMany({
+        where: { id: { in: empresaIds }, activo: true },
+        select: { id: true }
+      });
+      if (empresasExistentes.length !== empresaIds.length) {
+        return res.status(400).json({ success: false, data: null, error: 'Una o más empresas seleccionadas no existen o están inactivas' });
+      }
+    }
+
     // ADMIN y VENDEDOR solo pueden tener 1 empresa
     const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
     if (hasSingleRole && empresas.length > 1) {
       return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
+    }
+
+    // ADMIN solo puede asignar usuarios a sus propias empresas
+    if (context.rol === 'ADMIN' && empresas.length > 0) {
+      const empresasAdmin = await prisma.usuarioEmpresa.findMany({
+        where: { usuarioId: context.userId, activo: true },
+        select: { empresaId: true }
+      });
+      const adminEmpresaIds = new Set(empresasAdmin.map(e => e.empresaId));
+      const fueraAlcance = empresas.filter(e => !adminEmpresaIds.has(e.empresaId));
+      if (fueraAlcance.length > 0) {
+        return res.status(403).json({ success: false, data: null, error: 'No puedes asignar usuarios a empresas fuera de tu alcance' });
+      }
     }
 
     const dataToUpdate: any = {

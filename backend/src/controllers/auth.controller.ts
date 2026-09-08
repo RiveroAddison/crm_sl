@@ -69,7 +69,7 @@ export async function login(req: Request, res: Response) {
       .map((item) => ({ id: item.empresa.id, nombre: item.empresa.nombre, rubro: item.empresa.rubro, direccion: item.empresa.direccion, telefono: item.empresa.telefono }));
 
     if (empresasAsignadas.length === 0) {
-      return res.status(403).json({ success: false, data: null, error: 'El usuario no tiene empresas asignadas activas' });
+      return res.status(403).json({ success: false, data: null, error: 'El usuario no tiene empresas habilitadas. Contacte al administrador para asignar una empresa.' });
     }
 
     const hasMaster = user.usuarioEmpresas.some((item) => item.rol === 'MASTER');

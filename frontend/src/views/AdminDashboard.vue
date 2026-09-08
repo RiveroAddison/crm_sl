@@ -68,7 +68,7 @@ function openCreateUserModal() {
     email: '',
     password: '',
     activo: true,
-    empresas: adminMaster.empresas.map(e => ({ empresaId: e.id, rol: 'VENDEDOR' }))
+    empresas: []
   };
   showUserModal.value = true;
 }
@@ -81,13 +81,10 @@ function openEditUserModal(u: any) {
     email: u.email,
     password: '',
     activo: u.activo,
-    empresas: adminMaster.empresas.map(e => {
-      const found = u.empresas?.find((ue: any) => ue.empresaId === e.id);
-      return {
-        empresaId: e.id,
-        rol: found ? found.rol : 'VENDEDOR'
-      };
-    })
+    empresas: (u.empresas || []).map((ue: any) => ({
+      empresaId: ue.empresaId,
+      rol: ue.rol
+    }))
   };
   showUserModal.value = true;
 }
@@ -1560,22 +1557,29 @@ onBeforeUnmount(() => {
               <div class="flex items-center gap-2">
                 <span class="text-[10px] text-slate-400 font-semibold">Rol:</span>
                 <select
-                  :value="userForm.empresas.find(e => e.empresaId === emp.id)?.rol || 'VENDEDOR'"
+                  :value="userForm.empresas.find(e => e.empresaId === emp.id)?.rol || ''"
                   @change="($event) => {
-                    const newRol = ($event.target as HTMLSelectElement).value as any;
-                    const found = userForm.empresas.find(e => e.empresaId === emp.id);
-                    if (found) {
-                      found.rol = newRol;
+                    const newRol = ($event.target as HTMLSelectElement).value;
+                    const idx = userForm.empresas.findIndex(e => e.empresaId === emp.id);
+                    if (newRol === '') {
+                      // No aplica: eliminar del array
+                      if (idx !== -1) userForm.empresas.splice(idx, 1);
                     } else {
-                      userForm.empresas.push({ empresaId: emp.id, rol: newRol });
-                    }
-                    // ADMIN y VENDEDOR solo pueden tener 1 empresa
-                    if (newRol === 'ADMIN' || newRol === 'VENDEDOR') {
-                      userForm.empresas = userForm.empresas.filter(e => e.empresaId === emp.id);
+                      // Seleccionó un rol válido
+                      if (idx !== -1) {
+                        userForm.empresas[idx].rol = newRol;
+                      } else {
+                        userForm.empresas.push({ empresaId: emp.id, rol: newRol });
+                      }
+                      // ADMIN y VENDEDOR solo pueden tener 1 empresa
+                      if (newRol === 'ADMIN' || newRol === 'VENDEDOR') {
+                        userForm.empresas = userForm.empresas.filter(e => e.empresaId === emp.id);
+                      }
                     }
                   }"
                   class="bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none"
                 >
+                  <option value="">No aplica</option>
                   <option value="MASTER">MASTER</option>
                   <option value="ADMIN">ADMIN</option>
                   <option value="VENDEDOR">VENDEDOR</option>
