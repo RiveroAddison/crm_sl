@@ -8,7 +8,11 @@ import { usePedidosStore } from '../stores/pedidos';
 import { useAdminMasterStore } from '../stores/adminMaster';
 import { useVisitasStore } from '../stores/visitas';
 import { cuentasComercialesApi } from '../services';
-import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol } from '../domain';
+import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput, ActividadOportunidad, CreateActividadOportunidadInput } from '../domain';
+import ApproveLeadModal from '../components/common/ApproveLeadModal.vue';
+import RejectLeadModal from '../components/common/RejectLeadModal.vue';
+import LeadCaptureModal from '../components/common/LeadCaptureModal.vue';
+import ActivityTimeline from '../components/common/ActivityTimeline.vue';
 
 const auth = useAuthStore();
 const activeView = ref<'kanban' | 'table' | 'map' | 'leads' | 'pedidos' | 'usuarios' | 'empresas' | 'profit-sync'>('kanban');
@@ -23,6 +27,13 @@ const showModal = ref(false);
 const showLeadModal = ref(false);
 const showUserModal = ref(false);
 const showEmpresaModal = ref(false);
+const showApproveModal = ref(false);
+const showRejectModal = ref(false);
+const selectedLeadForAction = ref<Lead | null>(null);
+const leadActionError = ref('');
+const actividadesExpandidas = ref<string[]>([]);
+const actividadesOportunidadExpandidas = ref<string[]>([]);
+const actividadesOportunidadLoading = ref<string[]>([]);
 
 const editingUserId = ref<string | null>(null);
 const userForm = ref({
@@ -206,6 +217,32 @@ async function runSyncAll() {
   }
 }
 
+const grupoEmpresaId = ref('');
+const syncGrupoRunning = ref(false);
+const syncGrupoResult = ref<{ ok: boolean; created: number; updated: number; unchanged: number; errors: string[] } | null>(null);
+
+async function runSyncEmpresasFromGrupo() {
+  if (!grupoEmpresaId.value) {
+    alert('Selecciona la empresa GRUPO');
+    return;
+  }
+  syncGrupoRunning.value = true;
+  syncGrupoResult.value = null;
+  try {
+    const res = await adminMaster.syncEmpresasFromGrupo(grupoEmpresaId.value);
+    syncGrupoResult.value = res;
+    if (res.ok) {
+      alert(`¡Empresas sincronizadas!\nCreadas: ${res.created}\nActualizadas: ${res.updated}\nSin cambios: ${res.unchanged}`);
+    } else {
+      alert(`Sincronización completada con errores:\n${res.errors.join('\n')}`);
+    }
+  } catch (err) {
+    alert(err instanceof Error ? err.message : 'Error al sincronizar empresas');
+  } finally {
+    syncGrupoRunning.value = false;
+  }
+}
+
 const visits = ref<VisitaGps[]>([]);
 const mapElement = ref<HTMLElement | null>(null);
 let map: L.Map | null = null;
@@ -303,26 +340,13 @@ async function submitProspect() {
 }
 
 function resetLeadForm() {
-  newLead.value = {
-    nombreContacto: '',
-    empresaNombre: '',
-    rif: '',
-    email: '',
-    telefono: '',
-    fuente: 'REFERIDO',
-    presupuesto: 0,
-    necesidad: '',
-    autoridad: '',
-    tiempo: '',
-    cuentaComercialId: ''
-  };
   leadFormError.value = '';
 }
 
-async function submitLead() {
+async function submitLead(leadData: any) {
   leadFormError.value = '';
   try {
-    await leads.create(newLead.value);
+    await leads.create(leadData);
     showLeadModal.value = false;
     resetLeadForm();
   } catch (cause) {
@@ -338,6 +362,102 @@ async function promoteLead(id: string) {
   } catch (cause) {
     leads.error = cause instanceof Error ? cause.message : 'No fue posible promover el lead';
   }
+}
+
+function openApproveModal(lead: Lead) {
+  selectedLeadForAction.value = lead;
+  leadActionError.value = '';
+  showApproveModal.value = true;
+}
+
+function openRejectModal(lead: Lead) {
+  selectedLeadForAction.value = lead;
+  leadActionError.value = '';
+  showRejectModal.value = true;
+}
+
+async function handleApproveLead(input: AprobarLeadInput) {
+  if (!selectedLeadForAction.value) return;
+  leadActionError.value = '';
+  try {
+    await leads.aprobar(selectedLeadForAction.value.id, input);
+    showApproveModal.value = false;
+    selectedLeadForAction.value = null;
+    await prospects.load(true);
+  } catch (cause) {
+    leadActionError.value = cause instanceof Error ? cause.message : 'Error al aprobar lead';
+  }
+}
+
+async function handleRejectLead(input: RechazarLeadInput) {
+  if (!selectedLeadForAction.value) return;
+  leadActionError.value = '';
+  try {
+    await leads.rechazar(selectedLeadForAction.value.id, input);
+    showRejectModal.value = false;
+    selectedLeadForAction.value = null;
+  } catch (cause) {
+    leadActionError.value = cause instanceof Error ? cause.message : 'Error al rechazar lead';
+  }
+}
+
+function toggleActividades(leadId: string) {
+  const index = actividadesExpandidas.value.indexOf(leadId);
+  if (index === -1) {
+    actividadesExpandidas.value.push(leadId);
+  } else {
+    actividadesExpandidas.value.splice(index, 1);
+  }
+}
+
+function toggleActividadesOportunidad(oportunidadId: string) {
+  const index = actividadesOportunidadExpandidas.value.indexOf(oportunidadId);
+  if (index === -1) {
+    actividadesOportunidadExpandidas.value.push(oportunidadId);
+  } else {
+    actividadesOportunidadExpandidas.value.splice(index, 1);
+  }
+}
+
+function isActividadesOportunidadExpanded(oportunidadId: string) {
+  return actividadesOportunidadExpandidas.value.includes(oportunidadId);
+}
+
+function isActividadesOportunidadLoading(oportunidadId: string) {
+  return actividadesOportunidadLoading.value.includes(oportunidadId);
+}
+
+async function addActividadOportunidad(oportunidadId: string, input: CreateActividadOportunidadInput) {
+  await prospects.addActividad(oportunidadId, input);
+}
+
+function getEtapasPermitidas(etapaActual: EtapaOportunidad): { value: string; label: string; current?: boolean }[] {
+  const actual = statuses.find(s => s.value === etapaActual);
+  const currentLabel = actual ? actual.label : etapaActual;
+  
+  switch (etapaActual) {
+    case 'NUEVO':
+      return [
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+        { value: 'NEGOCIACION', label: '→ En Negociación' },
+      ];
+    case 'NEGOCIACION':
+      return [
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+        { value: 'CONVERTIDO', label: '→ Aprobar (Convertir)' },
+        { value: 'RECHAZADO', label: '→ Rechazar' },
+      ];
+    case 'CONVERTIDO':
+    case 'RECHAZADO':
+    default:
+      return [
+        { value: etapaActual, label: `📍 Actual: ${currentLabel}`, current: true },
+      ];
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 async function loadVisits() {
@@ -648,29 +768,6 @@ onBeforeUnmount(() => {
                   class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-[#073b73] focus:ring-1 focus:ring-[#073b73] transition-all"
                 >
               </div>
-
-              <select
-                v-model="prospects.selectedSeller"
-                class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:bg-white focus:border-[#073b73] text-slate-700"
-              >
-                <option>Todos los Vendedores</option>
-                <option v-for="s in sellers" :key="s">{{ s }}</option>
-              </select>
-
-              <select
-                v-model="prospects.selectedStatus"
-                class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:bg-white focus:border-[#073b73] text-slate-700"
-              >
-                <option>Todos los Estados</option>
-                <option v-for="st in statuses" :key="st.value">{{ st.label }}</option>
-              </select>
-
-              <button
-                class="text-xs font-semibold text-slate-500 hover:text-[#073b73] hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors"
-                @click="clearFilters"
-              >
-                Limpiar filtros
-              </button>
             </div>
           </div>
         </section>
@@ -737,15 +834,78 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <!-- Stage Selector Quick Action -->
-                <div class="mt-2.5">
-                  <select
-                    :value="p.etapa"
-                    class="w-full text-[11px] bg-slate-50 border border-slate-200 rounded-md px-2 py-1 outline-none text-slate-700 font-medium hover:bg-slate-100 focus:border-[#073b73] transition-colors"
-                    @change="prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
-                  >
-                    <option v-for="st in statuses" :key="st.value" :value="st.value">Mover a: {{ st.label }}</option>
-                  </select>
+                <!-- Stage Info & Actions -->
+                <div class="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+                  <!-- Current Status Badge -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400">Estado:</span>
+                    <span
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      :class="{
+                        'bg-blue-100 text-blue-700': p.etapa === 'NUEVO',
+                        'bg-amber-100 text-amber-700': p.etapa === 'NEGOCIACION',
+                        'bg-emerald-100 text-emerald-700': p.etapa === 'CONVERTIDO',
+                        'bg-red-100 text-red-700': p.etapa === 'RECHAZADO'
+                      }"
+                    >
+                      {{ statuses.find(s => s.value === p.etapa)?.label || p.etapa }}
+                    </span>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div v-if="p.etapa === 'NUEVO'" class="flex gap-1.5">
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'NEGOCIACION')"
+                    >
+                      → Negociación
+                    </button>
+                  </div>
+                  <div v-else-if="p.etapa === 'NEGOCIACION'" class="flex gap-1.5">
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'CONVERTIDO')"
+                    >
+                      ✓ Aprobar
+                    </button>
+                    <button
+                      class="flex-1 text-[10px] font-bold py-1.5 px-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
+                      @click="prospects.updateStage(p.id, 'RECHAZADO')"
+                    >
+                      ✕ Rechazar
+                    </button>
+                  </div>
+                  <div v-else class="text-center">
+                    <span
+                      class="text-[10px] font-bold px-3 py-1 rounded-full inline-block"
+                      :class="{
+                        'bg-emerald-100 text-emerald-600': p.etapa === 'CONVERTIDO',
+                        'bg-red-100 text-red-600': p.etapa === 'RECHAZADO'
+                      }"
+                    >
+                      {{ p.etapa === 'CONVERTIDO' ? '✅ Proceso completado' : '❌ Oportunidad rechazada' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Activities Toggle -->
+                <button
+                  type="button"
+                  class="mt-2 w-full text-[10px] font-bold text-slate-500 hover:text-[#073b73] transition-colors flex items-center justify-center gap-1"
+                  @click="toggleActividadesOportunidad(p.id)"
+                >
+                  <span>📋</span>
+                  <span>{{ (p.actividades?.length || 0) }} actividades</span>
+                  <span class="text-[8px]">{{ isActividadesOportunidadExpanded(p.id) ? '▲' : '▼' }}</span>
+                </button>
+
+                <!-- Activities Timeline -->
+                <div v-if="isActividadesOportunidadExpanded(p.id)" class="mt-2 pt-2 border-t border-slate-100">
+                  <ActivityTimeline
+                    :actividades="p.actividades || []"
+                    :allow-add="true"
+                    @add="(input) => addActividadOportunidad(p.id, input)"
+                  />
                 </div>
               </article>
 
@@ -775,9 +935,8 @@ onBeforeUnmount(() => {
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
+                <template v-for="p in filteredProspectos" :key="p.id">
                 <tr
-                  v-for="p in filteredProspectos"
-                  :key="p.id"
                   class="hover:bg-slate-50/80 transition-colors"
                 >
                   <td class="px-4 py-3.5 font-bold text-slate-900">{{ p.razonSocial }}</td>
@@ -790,9 +949,9 @@ onBeforeUnmount(() => {
                     <select
                       :value="p.etapa"
                       class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-semibold outline-none focus:border-[#073b73]"
-                      @change="prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
+                      @change="($event.target as HTMLSelectElement).value !== p.etapa && prospects.updateStage(p.id, ($event.target as HTMLSelectElement).value as EtapaOportunidad)"
                     >
-                      <option v-for="st in statuses" :key="st.value" :value="st.value">{{ st.label }}</option>
+                      <option v-for="st in getEtapasPermitidas(p.etapa)" :key="st.value" :value="st.value" :disabled="st.current">{{ st.label }}</option>
                     </select>
                   </td>
                   <td class="px-4 py-3.5 text-right font-extrabold text-emerald-700 text-sm">
@@ -800,15 +959,34 @@ onBeforeUnmount(() => {
                   </td>
                   <td class="px-4 py-3.5 font-medium text-slate-600">{{ p.vendedorNombre }}</td>
                   <td class="px-4 py-3.5 text-center">
-                    <button
-                      class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-semibold transition-colors"
-                      title="Eliminar prospecto"
-                      @click="prospects.remove(p.id)"
-                    >
-                      Eliminar
-                    </button>
+                    <div class="flex items-center justify-center gap-2">
+                      <button
+                        class="text-[#073b73] hover:bg-[#073b73]/10 px-2 py-1 rounded text-xs font-semibold transition-colors"
+                        title="Ver actividades"
+                        @click="toggleActividadesOportunidad(p.id)"
+                      >
+                        📋 {{ p.actividades?.length || 0 }}
+                      </button>
+                      <button
+                        class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-semibold transition-colors"
+                        title="Eliminar prospecto"
+                        @click="prospects.remove(p.id)"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                <tr v-if="isActividadesOportunidadExpanded(p.id)">
+                  <td colspan="7" class="px-4 py-3 bg-slate-50">
+                    <ActivityTimeline
+                      :actividades="p.actividades || []"
+                      :allow-add="true"
+                      @add="(input) => addActividadOportunidad(p.id, input)"
+                    />
+                  </td>
+                </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -858,60 +1036,107 @@ onBeforeUnmount(() => {
             <article
               v-for="lead in leads.leads"
               :key="lead.id"
-              class="bg-slate-50/70 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              class="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-md transition-all"
             >
-              <div class="space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <strong class="text-sm font-bold text-slate-900">{{ lead.empresaNombre }}</strong>
-                  <span class="text-xs text-slate-600 font-medium">({{ lead.nombreContacto }})</span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#073b73]">
-                    {{ lead.fuente }}
-                  </span>
-                  <span v-if="lead.rif" class="font-mono text-[10px] bg-slate-200/70 text-slate-700 px-1.5 py-0.5 rounded">
-                    {{ lead.rif }}
-                  </span>
+              <!-- Header: Empresa + Badges -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <strong class="text-sm font-bold text-slate-900">{{ lead.empresaNombre }}</strong>
+                    <span class="text-xs text-slate-500">({{ lead.nombreContacto }})</span>
+                    <span v-if="lead.rif" class="font-mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{{ lead.rif }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                    <span
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      :class="{
+                        'bg-blue-100 text-blue-700': lead.estado === 'ACTIVO',
+                        'bg-emerald-100 text-emerald-700': lead.estado === 'APROBADO',
+                        'bg-red-100 text-red-700': lead.estado === 'RECHAZADO',
+                        'bg-amber-100 text-amber-700': lead.estado === 'EN_PROCESO'
+                      }"
+                    >
+                      {{ lead.estado }}
+                    </span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      {{ lead.fuente }}
+                    </span>
+                    <span class="text-[10px] text-slate-400">•</span>
+                    <span class="text-[10px] text-slate-500">✉ {{ lead.emailContacto || 'Sin email' }}</span>
+                    <span class="text-[10px] text-slate-500">📞 {{ lead.telefonoContacto || 'Sin teléfono' }}</span>
+                  </div>
                 </div>
-                <div class="text-xs text-slate-500 flex items-center gap-3">
-                  <span>✉ {{ lead.email || 'Sin email' }}</span>
-                  <span>📞 {{ lead.telefono || 'Sin teléfono' }}</span>
-                </div>
-                <div class="text-xs text-slate-700 pt-1 flex flex-wrap gap-2">
-                  <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                    <strong>Necesidad:</strong> {{ lead.necesidad || 'Por definir' }}
-                  </span>
-                  <span class="bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                    <strong>Presupuesto:</strong> {{ lead.presupuesto ? formatCurrency(lead.presupuesto) : 'Por definir' }}
-                  </span>
+
+                <!-- Acciones -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <select
+                    v-if="lead.estado === 'ACTIVO'"
+                    :value="lead.estadoCalificacion"
+                    class="text-[11px] bg-white border border-slate-200 rounded-md px-2 py-1 font-semibold outline-none text-slate-700"
+                    @change="leads.setCalificacion(lead, ($event.target as HTMLSelectElement).value as any)"
+                  >
+                    <option value="NUEVO">Nuevo</option>
+                    <option value="CALIFICADO">Calificado</option>
+                    <option value="DESCARTADO">Descartado</option>
+                  </select>
+                  <button
+                    v-if="lead.estado === 'ACTIVO'"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="openApproveModal(lead)"
+                  >✓ Aprobar</button>
+                  <button
+                    v-if="lead.estado === 'ACTIVO'"
+                    class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="openRejectModal(lead)"
+                  >✕ Rechazar</button>
+                  <button
+                    v-if="lead.estadoCalificacion === 'CALIFICADO' && lead.estado === 'ACTIVO'"
+                    class="bg-[#073b73] hover:bg-[#0b5b95] text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
+                    @click="promoteLead(lead.id)"
+                  >Promover ➔</button>
+                  <button
+                    class="text-slate-300 hover:text-red-500 p-1 rounded transition-colors"
+                    @click="leads.remove(lead.id)"
+                  >✕</button>
                 </div>
               </div>
 
-              <!-- Qualification Actions -->
-              <div class="flex items-center gap-2 self-end md:self-auto">
-                <select
-                  :value="lead.estadoCalificacion"
-                  class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold outline-none text-slate-700"
-                  @change="leads.setCalificacion(lead, ($event.target as HTMLSelectElement).value as any)"
-                >
-                  <option value="NUEVO">Nuevo</option>
-                  <option value="CALIFICADO">Calificado</option>
-                  <option value="DESCARTADO">Descartado</option>
-                </select>
+              <!-- Rubros inline -->
+              <div class="mt-3 flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] text-slate-400 font-medium mr-1">Rubros:</span>
+                <template v-for="rubro in ['COMBUSTIBLE', 'LUBRICANTES', 'AUTOPARTES', 'TRANSPORTE', 'ALIMENTOS_BALANCEADOS', 'ALIMENTOS_CONGELADOS']" :key="rubro">
+                  <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium"
+                    :class="{
+                      'bg-emerald-100 text-emerald-700': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                      'bg-red-100 text-red-600': lead.rechazos?.some(r => r.rubro === rubro),
+                      'bg-slate-100 text-slate-400': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                    }"
+                  >
+                    <span
+                      class="w-1 h-1 rounded-full"
+                      :class="{
+                        'bg-emerald-500': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                        'bg-red-400': lead.rechazos?.some(r => r.rubro === rubro),
+                        'bg-slate-300': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                      }"
+                    ></span>
+                    {{ rubro.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                  </span>
+                </template>
+              </div>
 
-                <button
-                  v-if="lead.estadoCalificacion === 'CALIFICADO'"
-                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
-                  @click="promoteLead(lead.id)"
-                >
-                  <span>Promover a Kanban ➔</span>
-                </button>
-
-                <button
-                  class="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded text-xs transition-colors"
-                  title="Eliminar lead"
-                  @click="leads.remove(lead.id)"
-                >
-                  ✕
-                </button>
+              <!-- Info adicional -->
+              <div v-if="lead.descripcionCaptacion || lead.necesidad || lead.crossSelling" class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-3 flex-wrap text-[11px]">
+                <span v-if="lead.descripcionCaptacion" class="text-slate-500">
+                  <strong class="text-slate-600">Captación:</strong> {{ lead.descripcionCaptacion }}
+                </span>
+                <span v-if="lead.necesidad" class="text-slate-500">
+                  <strong class="text-slate-600">Necesidad:</strong> {{ lead.necesidad }}
+                </span>
+                <span v-if="lead.crossSelling" class="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                  ⚠️ Ya compra en: {{ [lead.crossSelling.combustible === 'COMPRA' ? 'Combustible' : '', lead.crossSelling.lubricantes === 'COMPRA' ? 'Lubricantes' : '', lead.crossSelling.autopartes === 'COMPRA' ? 'Autopartes' : ''].filter(Boolean).join(', ') }}
+                </span>
               </div>
             </article>
 
@@ -1177,6 +1402,38 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Sync Empresas desde Grupo -->
+            <div class="border border-amber-200 bg-amber-50/40 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                  <span>🏢</span>
+                  <h3>Sincronizar Empresas desde Grupo</h3>
+                </div>
+                <p class="text-xs text-slate-600 mt-1">Importa empresas desde ad_grup.dbo.Tempresas. Crea/actualiza cada empresa con sus credenciales Profit.</p>
+                <div class="mt-2">
+                  <label class="text-[10px] text-slate-500 font-medium">Empresa GRUPO (origen):</label>
+                  <select v-model="grupoEmpresaId" class="w-full text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 mt-0.5 outline-none">
+                    <option value="">Seleccionar empresa GRUPO</option>
+                    <option v-for="e in adminMaster.empresas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-2"
+                :disabled="syncGrupoRunning || !grupoEmpresaId"
+                @click="runSyncEmpresasFromGrupo"
+              >
+                <span>🔄</span>
+                <span>{{ syncGrupoRunning ? 'Sincronizando...' : 'Sincronizar Empresas' }}</span>
+              </button>
+              <div v-if="syncGrupoResult" class="text-[10px] text-slate-600 mt-1 space-y-0.5">
+                <p>Creadas: <span class="font-bold text-emerald-700">{{ syncGrupoResult.created }}</span> |
+                   Actualizadas: <span class="font-bold text-blue-700">{{ syncGrupoResult.updated }}</span> |
+                   Sin cambios: <span class="font-bold text-slate-500">{{ syncGrupoResult.unchanged }}</span></p>
+                <p v-if="syncGrupoResult.errors.length" class="text-red-600">Errores: {{ syncGrupoResult.errors.join('; ') }}</p>
+              </div>
+            </div>
+
             <!-- Sync Card 1 -->
             <div class="border border-blue-200 bg-blue-50/40 rounded-xl p-4 space-y-3 flex flex-col justify-between">
               <div>
@@ -1287,6 +1544,7 @@ onBeforeUnmount(() => {
           <!-- Company matrix assignments -->
           <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
             <h4 class="text-xs font-bold text-slate-700 border-b pb-1.5">Permisos por Empresa</h4>
+            <p class="text-[10px] text-slate-400">Un usuario ADMIN o VENDEDOR solo puede tener una empresa asignada.</p>
             <div v-for="emp in adminMaster.empresas" :key="emp.id" class="flex items-center justify-between text-xs py-1">
               <span class="font-medium text-slate-800">{{ emp.nombre }}</span>
               <div class="flex items-center gap-2">
@@ -1294,11 +1552,16 @@ onBeforeUnmount(() => {
                 <select
                   :value="userForm.empresas.find(e => e.empresaId === emp.id)?.rol || 'VENDEDOR'"
                   @change="($event) => {
+                    const newRol = ($event.target as HTMLSelectElement).value as any;
                     const found = userForm.empresas.find(e => e.empresaId === emp.id);
                     if (found) {
-                      found.rol = ($event.target as HTMLSelectElement).value as any;
+                      found.rol = newRol;
                     } else {
-                      userForm.empresas.push({ empresaId: emp.id, rol: ($event.target as HTMLSelectElement).value as any });
+                      userForm.empresas.push({ empresaId: emp.id, rol: newRol });
+                    }
+                    // ADMIN y VENDEDOR solo pueden tener 1 empresa
+                    if (newRol === 'ADMIN' || newRol === 'VENDEDOR') {
+                      userForm.empresas = userForm.empresas.filter(e => e.empresaId === emp.id);
                     }
                   }"
                   class="bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none"
@@ -1473,87 +1736,34 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- MODAL 2: NUEVO LEAD -->
-    <div v-if="showLeadModal" class="modal-backdrop" @click.self="showLeadModal = false">
-      <div class="prospect-modal">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div>
-            <h2 class="text-lg font-bold text-[#073b73]">Captar Nuevo Lead</h2>
-            <p class="text-xs text-slate-500">Registra un prospecto preliminar para calificar criterios BANT/MEDDIC</p>
-          </div>
-          <button class="text-slate-400 hover:text-slate-600 font-bold text-base p-1" @click="showLeadModal = false">✕</button>
-        </div>
-
-        <form class="space-y-3.5" @submit.prevent="submitLead">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Nombre de Contacto *</label>
-              <input v-model="newLead.nombreContacto" required placeholder="Ej: Ing. Carlos Pérez" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Empresa / Razón Social *</label>
-              <input v-model="newLead.empresaNombre" required placeholder="Ej: Transporte Central C.A." class="w-full">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">RIF (Opcional)</label>
-              <input v-model="newLead.rif" placeholder="J-12345678-0" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
-              <input v-model="newLead.email" type="email" placeholder="contacto@empresa.com" class="w-full">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
-              <input v-model="newLead.telefono" placeholder="+58 414..." class="w-full">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Cuenta comercial</label>
-            <select v-model="newLead.cuentaComercialId" class="w-full">
-              <option value="">Crear o resolver por RIF</option>
-              <option v-for="cuenta in cuentasComerciales" :key="cuenta.id" :value="cuenta.id">{{ cuenta.nombre }}{{ cuenta.rif ? ` (${cuenta.rif})` : '' }}</option>
-            </select>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Canal de Origen</label>
-              <select v-model="newLead.fuente" class="w-full">
-                <option value="REFERIDO">Referido</option>
-                <option value="WEB">Web / Portal</option>
-                <option value="REDES">Redes Sociales</option>
-                <option value="LLAMADA">Llamada Comercial</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">Presupuesto Estimado ($)</label>
-              <input v-model.number="newLead.presupuesto" type="number" min="0" placeholder="0" class="w-full">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Necesidad Detectada</label>
-            <input v-model="newLead.necesidad" placeholder="Ej: Requerimiento de 20.000 Lts diesel mensual" class="w-full">
-          </div>
-
-          <div v-if="leadFormError" class="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
-            {{ leadFormError }}
-          </div>
-
-          <footer>
-            <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg" @click="showLeadModal = false">
-              Cancelar
-            </button>
-            <button class="bg-[#073b73] hover:bg-[#0b5b95] text-white text-xs font-bold px-4 py-2 rounded-lg shadow" :disabled="leads.loading">
-              Crear Lead
-            </button>
-          </footer>
-        </form>
-      </div>
-    </div>
   </div>
+
+  <LeadCaptureModal
+    v-if="showLeadModal"
+    :loading="leads.loading"
+    :error="leadFormError"
+    @submit="submitLead"
+    @close="showLeadModal = false"
+  />
+
+  <ApproveLeadModal
+    v-if="showApproveModal && selectedLeadForAction"
+    :lead="selectedLeadForAction"
+    :loading="leads.loading"
+    :error="leadActionError"
+    :user-role="auth.user?.rol || ''"
+    :user-empresa-id="auth.tenantId || ''"
+    :user-empresa-rubro="auth.empresa?.rubro || ''"
+    @submit="handleApproveLead"
+    @close="showApproveModal = false; selectedLeadForAction = null"
+  />
+
+  <RejectLeadModal
+    v-if="showRejectModal && selectedLeadForAction"
+    :lead="selectedLeadForAction"
+    :loading="leads.loading"
+    :error="leadActionError"
+    @submit="handleRejectLead"
+    @close="showRejectModal = false; selectedLeadForAction = null"
+  />
 </template>

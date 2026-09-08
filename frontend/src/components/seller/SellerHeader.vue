@@ -5,7 +5,7 @@ defineProps<{
 }>();
 
 defineEmits<{
-  (e: 'open-prospect-modal'): void;
+  (e: 'open-lead-modal'): void;
   (e: 'logout'): void;
 }>();
 </script>
@@ -19,7 +19,7 @@ defineEmits<{
     </div>
     <div class="flex items-center gap-4">
       <span v-if="sellerName" class="text-sm text-sky-100 hidden sm:inline">Vendedor: <b class="text-white">{{ sellerName }}</b></span>
-      <button class="bg-brand-green text-brand-ink font-bold px-4 py-2 rounded-lg text-sm transition hover:bg-lime-400 shadow" @click="$emit('open-prospect-modal')">+ Nuevo Prospecto</button>
+      <button class="bg-brand-green text-brand-ink font-bold px-4 py-2 rounded-lg text-sm transition hover:bg-lime-400 shadow" @click="$emit('open-lead-modal')">+ Captar Lead</button>
       <button class="bg-red-600/20 text-red-200 hover:bg-red-600/40 px-3 py-2 rounded-lg text-sm transition" @click="$emit('logout')">Cerrar sesión</button>
     </div>
   </header>

@@ -12,6 +12,7 @@ import usuariosRouter from './routes/usuarios.routes.js';
 import empresasRouter from './routes/empresas.routes.js';
 import empresasClientesRouter from './routes/empresasClientes.routes.js';
 import profitRouter from './routes/profit.routes.js';
+import tiposClienteRouter from './routes/tiposCliente.routes.js';
 import {
   helmetMiddleware,
   stripInfoHeaders,
@@ -51,6 +52,7 @@ app.use('/api/usuarios', usuariosRouter);
 app.use('/api/empresas', empresasRouter);
 app.use('/api/empresas-clientes', empresasClientesRouter);
 app.use('/api/profit', profitRouter);
+app.use('/api/tipos-cliente', tiposClienteRouter);
 
 // Middleware final: captura cualquier error de CORS lanzado por el middleware de cors
 // y responde 403 con un JSON en lugar del HTML por defecto de Express.

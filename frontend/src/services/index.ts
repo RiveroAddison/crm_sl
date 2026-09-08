@@ -11,3 +11,6 @@ export { prospectosApi } from './prospectos.api';
 export { visitasApi } from './visitas.api';
 export { usuariosApi, empresasApi } from './admin.api';
 export { profitApi } from './profit.api';
+export { actividadesApi } from './actividades.api';
+export { actividadesOportunidadesApi } from './actividadesOportunidades.api';
+export { tiposClienteApi } from './tiposCliente.api';

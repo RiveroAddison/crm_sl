@@ -50,7 +50,7 @@ export const UsuarioSchema = z.object({
   email: z.string().email(),
   activo: z.boolean(),
   createdAt: z.string().optional(),
-  empresas: z.array(UsuarioEmpresaSchema),
+  empresas: z.array(UsuarioEmpresaSchema).default([]),
 });
 export type Usuario = z.infer<typeof UsuarioSchema>;
 

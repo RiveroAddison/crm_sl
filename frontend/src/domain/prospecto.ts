@@ -5,6 +5,30 @@ import { ApiEnvelopeSchema, OptionalUuidSchema, UuidSchema } from './api';
 export const EtapaOportunidadSchema = z.enum(['NUEVO', 'NEGOCIACION', 'CONVERTIDO', 'RECHAZADO']);
 export type EtapaOportunidad = z.infer<typeof EtapaOportunidadSchema>;
 
+export const TipoActividadOportunidadSchema = z.enum(['CAPTACION', 'SEGUIMIENTO', 'LLAMADA', 'EMAIL', 'VISITA', 'REUNION', 'NOTA', 'WHATSAPP']);
+export type TipoActividadOportunidad = z.infer<typeof TipoActividadOportunidadSchema>;
+
+export const ActividadOportunidadSchema = z.object({
+  id: z.string(),
+  oportunidadId: z.string(),
+  empresaId: z.string(),
+  autorId: z.string(),
+  tipo: TipoActividadOportunidadSchema,
+  descripcion: z.string(),
+  fecha: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  autor: z.object({ id: z.string(), nombre: z.string() }),
+});
+export type ActividadOportunidad = z.infer<typeof ActividadOportunidadSchema>;
+
+export const CreateActividadOportunidadInputSchema = z.object({
+  tipo: TipoActividadOportunidadSchema,
+  descripcion: z.string().min(5),
+  fecha: z.string().optional(),
+});
+export type CreateActividadOportunidadInput = z.infer<typeof CreateActividadOportunidadInputSchema>;
+
 export const OportunidadSchema = z.object({
   id: z.string(),
   empresaId: UuidSchema.optional(),
@@ -23,7 +47,8 @@ export const OportunidadSchema = z.object({
   fechaContacto: z.string(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
+  actividades: z.array(ActividadOportunidadSchema).optional(),
+}).passthrough();
 export type Oportunidad = z.infer<typeof OportunidadSchema>;
 
 export const CrearOportunidadSchema = z.object({

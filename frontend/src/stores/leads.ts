@@ -1,8 +1,8 @@
-// filepath: src/stores/leads.ts
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { leadsApi } from '../services';
-import type { Lead, LeadInput, LeadPatch, LeadCalificacion } from '../domain';
+import { actividadesApi } from '../services/actividades.api';
+import type { Lead, LeadInput, LeadPatch, LeadCalificacion, AprobarLeadInput, RechazarLeadInput, CreateActividadInput, ActividadLead } from '../domain';
 
 export const useLeadsStore = defineStore('leads', () => {
   const leads = ref<Lead[]>([]);
@@ -60,5 +60,74 @@ export const useLeadsStore = defineStore('leads', () => {
     return leadsApi.convert(id);
   }
 
-  return { leads, loading, error, activeLeads, hydrate, load, create, update, setCalificacion, remove, convert };
+  async function aprobar(leadId: string, input: AprobarLeadInput) {
+    loading.value = true;
+    error.value = '';
+    try {
+      const response = await leadsApi.aprobar(leadId, input);
+      const index = leads.value.findIndex((l) => l.id === leadId);
+      if (index !== -1) {
+        leads.value[index] = { ...leads.value[index], estado: 'APROBADO' };
+      }
+      return response.data;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Error al aprobar lead';
+      throw cause;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function rechazar(leadId: string, input: RechazarLeadInput) {
+    loading.value = true;
+    error.value = '';
+    try {
+      const response = await leadsApi.rechazar(leadId, input);
+      await load(true);
+      return response.data;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Error al rechazar lead';
+      throw cause;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function loadActividades(leadId: string): Promise<ActividadLead[]> {
+    try {
+      const response = await actividadesApi.list(leadId);
+      return response.data.data;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Error al cargar actividades';
+      return [];
+    }
+  }
+
+  async function addActividad(leadId: string, input: CreateActividadInput): Promise<ActividadLead> {
+    try {
+      const response = await actividadesApi.create(leadId, input);
+      return response.data.data;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Error al crear actividad';
+      throw cause;
+    }
+  }
+
+  return {
+    leads,
+    loading,
+    error,
+    activeLeads,
+    hydrate,
+    load,
+    create,
+    update,
+    setCalificacion,
+    remove,
+    convert,
+    aprobar,
+    rechazar,
+    loadActividades,
+    addActividad,
+  };
 });

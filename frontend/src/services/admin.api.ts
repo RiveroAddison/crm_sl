@@ -25,6 +25,11 @@ export const usuariosApi = {
     return UsuarioListResponseSchema.parse(data).data;
   },
 
+  async listVendedoresByEmpresa(empresaId: string): Promise<Array<{ id: string; nombre: string; email: string }>> {
+    const { data } = await http.get(`/api/usuarios/vendedores-empresa?empresaId=${empresaId}`);
+    return data.data;
+  },
+
   async get(id: string): Promise<Usuario> {
     const { data } = await http.get(`/api/usuarios/${id}`);
     return UsuarioResponseSchema.parse(data).data;
@@ -79,5 +84,10 @@ export const empresasApi = {
     const body = TestConexionInputSchema.parse(input);
     const { data } = await http.post('/api/empresas/test-connection', body);
     return TestConexionResponseSchema.parse(data).data;
+  },
+
+  async syncFromGrupo(grupoEmpresaId: string): Promise<{ ok: boolean; created: number; updated: number; unchanged: number; errors: string[] }> {
+    const { data } = await http.post('/api/empresas/sync-from-grupo', { grupoEmpresaId });
+    return data.data;
   },
 };

@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { list, get, create, update, remove } from '../controllers/empresas.controller.js';
+import { list, get, create, update, remove, syncFromGrupo } from '../controllers/empresas.controller.js';
 
 const router = Router();
 
+router.post('/sync-from-grupo', syncFromGrupo);
 router.get('/', list);
 router.get('/:id', get);
 router.post('/', create);

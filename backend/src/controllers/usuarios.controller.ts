@@ -134,6 +134,12 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado' });
     }
 
+    // ADMIN y VENDEDOR solo pueden tener 1 empresa
+    const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
+    if (hasSingleRole && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const newUser = await prisma.$transaction(async (tx) => {
@@ -207,6 +213,12 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ success: false, data: null, error: 'El correo electrónico ya está registrado por otro usuario' });
     }
 
+    // ADMIN y VENDEDOR solo pueden tener 1 empresa
+    const hasSingleRole = empresas.some(e => e.rol === 'ADMIN' || e.rol === 'VENDEDOR');
+    if (hasSingleRole && empresas.length > 1) {
+      return res.status(400).json({ success: false, data: null, error: 'Los usuarios ADMIN y VENDEDOR solo pueden estar asignados a una empresa' });
+    }
+
     const dataToUpdate: any = {
       nombre,
       email: normalizedEmail,
@@ -240,14 +252,73 @@ export async function update(req: Request, res: Response) {
       }
     });
 
+    // Reconstruir la lista de empresas del usuario
+    const usuarioEmpresas = await prisma.usuarioEmpresa.findMany({
+      where: { usuarioId: id },
+      include: { empresa: true }
+    });
+
     return res.json({
       success: true,
-      data: { id, nombre, email: normalizedEmail, activo },
+      data: {
+        id,
+        nombre,
+        email: normalizedEmail,
+        activo,
+        empresas: usuarioEmpresas.map(ue => ({
+          empresaId: ue.empresaId,
+          empresaNombre: ue.empresa.nombre,
+          rol: ue.rol,
+          activo: ue.activo
+        }))
+      },
       error: ''
     });
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
     return res.status(500).json({ success: false, data: null, error: 'Error al actualizar usuario' });
+  }
+}
+
+export async function listVendedoresByEmpresa(req: Request, res: Response) {
+  try {
+    const context = await getMasterOrAdminContext(req);
+    if (!context) {
+      return res.status(403).json({ success: false, data: null, error: 'No autorizado' });
+    }
+
+    const { empresaId } = req.query;
+    if (!empresaId || typeof empresaId !== 'string') {
+      return res.status(400).json({ success: false, data: null, error: 'empresaId es requerido' });
+    }
+
+    const vendedores = await prisma.usuarioEmpresa.findMany({
+      where: {
+        empresaId,
+        rol: 'VENDEDOR',
+        activo: true,
+        usuario: { activo: true }
+      },
+      include: {
+        usuario: {
+          select: { id: true, nombre: true, email: true }
+        }
+      },
+      orderBy: { usuario: { nombre: 'asc' } }
+    });
+
+    return res.json({
+      success: true,
+      data: vendedores.map(ve => ({
+        id: ve.usuario.id,
+        nombre: ve.usuario.nombre,
+        email: ve.usuario.email
+      })),
+      error: ''
+    });
+  } catch (error) {
+    console.error('Error al listar vendedores por empresa:', error);
+    return res.status(500).json({ success: false, data: null, error: 'Error al listar vendedores' });
   }
 }
 

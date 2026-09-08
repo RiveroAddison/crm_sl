@@ -8,9 +8,13 @@ import {
   LeadResponseSchema,
   LeadDeleteResponseSchema,
   LeadConvertResponseSchema,
+  AprobarLeadInputSchema,
+  RechazarLeadInputSchema,
   type Lead,
   type LeadInput,
   type LeadPatch,
+  type AprobarLeadInput,
+  type RechazarLeadInput,
 } from '../domain/lead';
 
 export const leadsApi = {
@@ -51,5 +55,22 @@ export const leadsApi = {
   async convert(id: string) {
     const { data } = await http.post(`/api/leads/${id}/convert`);
     return LeadConvertResponseSchema.parse(data).data;
+  },
+
+  async aprobar(id: string, input: AprobarLeadInput) {
+    const body = AprobarLeadInputSchema.parse(input);
+    const { data } = await http.post(`/api/leads/${id}/aprobar`, body);
+    return data;
+  },
+
+  async rechazar(id: string, input: RechazarLeadInput) {
+    const body = RechazarLeadInputSchema.parse(input);
+    const { data } = await http.post(`/api/leads/${id}/rechazar`, body);
+    return data;
+  },
+
+  async getRechazos(id: string) {
+    const { data } = await http.get(`/api/leads/${id}/rechazos`);
+    return data;
   },
 };

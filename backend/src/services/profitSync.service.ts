@@ -300,6 +300,7 @@ type ProfitClienteRow = {
   telefonos: string | null;
   vendedor: string | null;
   correo: string | null;
+  tipo_cliente: string | null;
 };
 
 export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResult> {
@@ -311,7 +312,7 @@ export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResu
     const res = await pool
       .request()
       .query<ProfitClienteRow>(
-        'SELECT cod, rif, razon_social, direccion, telefonos, vendedor, correo FROM AD_DIST.DBO.CRM_CLIENTE;'
+        'SELECT cod, rif, razon_social, direccion, telefonos, vendedor, correo, tipo_cliente FROM AD_DIST.DBO.CRM_CLIENTE;'
       );
     const rows = res.recordset ?? [];
     stats.read = rows.length;
@@ -335,6 +336,7 @@ export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResu
         const telefono = asString(row.telefonos) || null;
         const vendedorCod = asString(row.vendedor);
         const vendedorId = vendedorCod ? vendedorMap.get(vendedorCod) ?? null : null;
+        const tipoClienteNombre = asString(row.tipo_cliente) || null;
 
         if (!cod) {
           stats.skipped += 1;
@@ -353,15 +355,42 @@ export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResu
         }
 
         await prisma.$transaction(async (tx) => {
+          // 0. Upsert TipoCliente si se proporciona.
+          let tipoClienteId: string | null = null;
+          if (tipoClienteNombre) {
+            const tipoCliente = await tx.tipoCliente.upsert({
+              where: {
+                empresaId_nombre: {
+                  empresaId: empresa.id,
+                  nombre: tipoClienteNombre
+                }
+              },
+              update: {},
+              create: {
+                empresaId: empresa.id,
+                nombre: tipoClienteNombre,
+                activo: true
+              }
+            });
+            tipoClienteId = tipoCliente.id;
+          }
+
           // 1. Upsert ClienteCorporativo por rif.
           const corporativo = await tx.clienteCorporativo.upsert({
             where: { rif },
             update: {
               razonSocial,
               ...(direccion !== null ? { direccion } : {}),
-              ...(telefono !== null ? { telefono } : {})
+              ...(telefono !== null ? { telefono } : {}),
+              ...(tipoClienteId !== null ? { tipoClienteId } : {})
             },
-            create: { rif, razonSocial, direccion, telefono }
+            create: {
+              rif,
+              razonSocial,
+              direccion,
+              telefono,
+              ...(tipoClienteId !== null ? { tipoClienteId } : {})
+            }
           });
 
           // 2. Upsert ClienteEmpresa por (empresaId, profitCodCli).
