@@ -21,7 +21,8 @@ export async function list(req: Request, res: Response) {
   try {
     const context = await getRequestContext(req);
     if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
-    return res.json({ success: true, data: await listTiposCliente(context), error: '' });
+    const empresaIdOverride = typeof req.query.empresaId === 'string' ? req.query.empresaId : undefined;
+    return res.json({ success: true, data: await listTiposCliente(context, empresaIdOverride), error: '' });
   } catch {
     return res.status(500).json({ success: false, data: null, error: 'No fue posible cargar los tipos de cliente' });
   }

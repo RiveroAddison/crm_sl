@@ -73,18 +73,19 @@ onMounted(async () => {
 });
 
 async function cargarDatos() {
+  // Para MASTER: usar empresaId del lead. Para ADMIN: usar empresaId del usuario.
+  const empresaIdParaDatos = props.userRole === 'MASTER' ? props.lead.empresaId : props.userEmpresaId;
+
   try {
-    const tiposResponse = await tiposClienteApi.list();
+    const tiposResponse = await tiposClienteApi.list(empresaIdParaDatos);
     tiposCliente.value = tiposResponse;
   } catch (error) {
     console.error('Error al cargar tipos de cliente:', error);
   }
 
-  // ADMIN: vendedores de su empresa. MASTER: vendedores de la empresa del lead
-  const empresaIdParaVendedores = props.userRole === 'MASTER' ? props.lead.empresaId : props.userEmpresaId;
-  if (empresaIdParaVendedores) {
+  if (empresaIdParaDatos) {
     try {
-      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(empresaIdParaVendedores);
+      const vendedoresResponse = await usuariosApi.listVendedoresByEmpresa(empresaIdParaDatos);
       vendedores.value = vendedoresResponse;
     } catch (error) {
       console.error('Error al cargar vendedores:', error);

@@ -4,9 +4,10 @@ import type { RequestContext } from '../middleware/auth.js';
 export type CreateTipoClienteInput = { nombre: string };
 export type UpdateTipoClienteInput = { nombre?: string; activo?: boolean };
 
-export async function listTiposCliente(context: RequestContext) {
+export async function listTiposCliente(context: RequestContext, empresaIdOverride?: string) {
+  const empresaId = empresaIdOverride || context.tenantId;
   return prisma.tipoCliente.findMany({
-    where: { empresaId: context.tenantId, activo: true },
+    where: { empresaId, activo: true },
     orderBy: { nombre: 'asc' }
   });
 }

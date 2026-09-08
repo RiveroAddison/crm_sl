@@ -2,8 +2,9 @@ import { http } from './http';
 import type { TipoCliente } from '../domain/lead';
 
 export const tiposClienteApi = {
-  async list(): Promise<TipoCliente[]> {
-    const { data } = await http.get<{ success: boolean; data: TipoCliente[] }>('/api/tipos-cliente');
+  async list(empresaId?: string): Promise<TipoCliente[]> {
+    const params = empresaId ? `?empresaId=${empresaId}` : '';
+    const { data } = await http.get<{ success: boolean; data: TipoCliente[] }>(`/api/tipos-cliente${params}`);
     return data.data;
   },
 

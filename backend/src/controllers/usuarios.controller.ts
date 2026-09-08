@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { getMasterOrAdminContext } from '../middleware/auth.js';
+import { getMasterOrAdminContext, getRequestContext } from '../middleware/auth.js';
 
 const usuarioEmpresaSchema = z.object({
   empresaId: z.string().uuid(),
@@ -307,7 +307,7 @@ export async function update(req: Request, res: Response) {
 
 export async function listVendedoresByEmpresa(req: Request, res: Response) {
   try {
-    const context = await getMasterOrAdminContext(req);
+    const context = await getRequestContext(req);
     if (!context) {
       return res.status(403).json({ success: false, data: null, error: 'No autorizado' });
     }
@@ -315,6 +315,12 @@ export async function listVendedoresByEmpresa(req: Request, res: Response) {
     const { empresaId } = req.query;
     if (!empresaId || typeof empresaId !== 'string') {
       return res.status(400).json({ success: false, data: null, error: 'empresaId es requerido' });
+    }
+
+    // MASTER puede buscar vendedores de cualquier empresa.
+    // ADMIN/VENDEDOR solo de su empresa.
+    if (context.rol !== 'MASTER' && empresaId !== context.tenantId) {
+      return res.status(403).json({ success: false, data: null, error: 'No puedes ver vendedores de otra empresa' });
     }
 
     const vendedores = await prisma.usuarioEmpresa.findMany({
