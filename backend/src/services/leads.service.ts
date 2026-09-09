@@ -68,9 +68,7 @@ const include = {
 export async function listLeads(context: RequestContext) {
   const leads = await prisma.lead.findMany({
     where: {
-      // MASTER ve todos, otros solo su empresa
-      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {}),
-      // VENDEDOR solo ve sus leads
+      // MASTER y ADMIN ven todos los leads, VENDEDOR solo los suyos
       ...(context.rol === 'VENDEDOR' ? { vendedorId: context.userId } : {})
     },
     include,
@@ -181,18 +179,22 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
   if (context.rol === 'VENDEDOR') throw new Error('No tienes permiso para aprobar leads');
 
   const lead = await prisma.lead.findFirst({
-    where: {
-      id,
-      // MASTER puede aprobar cualquiera, ADMIN/VENDEDOR solo su empresa
-      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {})
-    },
+    where: { id },
     include: { vendedor: true, cuentaComercial: true, aprobaciones: true }
   });
   if (!lead) throw new Error('Lead no encontrado');
 
   // ADMIN solo puede aprobar leads de su empresa
   if (context.rol === 'ADMIN' && lead.empresaId !== context.tenantId) {
-    throw new Error('No puedes aprobar leads de otra empresa');
+    throw new Error('Solo puedes aprobar leads de tu empresa');
+  }
+
+  // ADMIN solo puede aprobar su rubro
+  if (context.rol === 'ADMIN') {
+    const miEmpresa = await prisma.empresa.findUnique({ where: { id: context.tenantId } });
+    if (miEmpresa?.rubro && input.rubro.toUpperCase() !== miEmpresa.rubro.toUpperCase()) {
+      throw new Error(`Solo puedes aprobar leads para el rubro ${miEmpresa.rubro}`);
+    }
   }
 
   // Verificar si ya fue aprobado para ESTE rubro
@@ -203,6 +205,27 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
     where: { leadId_rubro: { leadId: id, rubro: input.rubro } }
   });
   if (rechazoExistente) throw new Error(`El lead fue rechazado para el rubro ${input.rubro}`);
+
+  // Determinar empresa destino para la Oportunidad
+  let empresaDestinoId: string;
+  if (context.rol === 'MASTER') {
+    // MASTER: auto-resolver empresa desde rubro
+    const rubroToNombre: Record<string, string> = {
+      'COMBUSTIBLE': 'Combustible', 'LUBRICANTES': 'Lubricantes',
+      'AUTOPARTES': 'Autopartes', 'TRANSPORTE': 'Transporte',
+      'ALIMENTOS_BALANCEADOS': 'Alimentos Balanceados',
+      'ALIMENTOS_CONGELADOS': 'Alimentos Congelados',
+    };
+    const rubroNombre = rubroToNombre[input.rubro.toUpperCase()];
+    const empresaDestino = rubroNombre
+      ? await prisma.empresa.findFirst({ where: { rubro: rubroNombre, activo: true } })
+      : null;
+    if (!empresaDestino) throw new Error(`No se encontró una empresa activa para el rubro ${input.rubro}`);
+    empresaDestinoId = empresaDestino.id;
+  } else {
+    // ADMIN: siempre su empresa
+    empresaDestinoId = context.tenantId;
+  }
 
   let crossSellingInfo: { clienteCorporativoId: string; [key: string]: any } | null = null;
   if (lead.rif) {
@@ -231,7 +254,7 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
   return prisma.$transaction(async (tx) => {
     const oportunidad = await tx.oportunidad.create({
       data: {
-        empresaId: lead.empresaId,
+        empresaId: empresaDestinoId,
         cuentaComercialId: lead.cuentaComercialId,
         leadId: lead.id,
         vendedorId: input.vendedorAsignadoId,
@@ -246,18 +269,16 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
       }
     });
 
-    // Crear registro de aprobación por rubro
     await tx.leadAprobacion.create({
       data: {
         leadId: lead.id,
-        empresaId: lead.empresaId,
+        empresaId: empresaDestinoId,
         rubro: input.rubro,
         aprobadoBy: context.userId,
         oportunidadId: oportunidad.id,
       }
     });
 
-    // Guardar rubro original si es la primera aprobación
     if (!lead.rubroOriginal) {
       await tx.lead.update({
         where: { id: lead.id },
@@ -268,10 +289,8 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
     if (crossSellingInfo) {
       const updateData: Record<string, string> = {};
       const rubroToField: Record<string, string> = {
-        'COMBUSTIBLE': 'combustible',
-        'LUBRICANTES': 'lubricantes',
-        'AUTOPARTES': 'autopartes',
-        'TRANSPORTE': 'transporte',
+        'COMBUSTIBLE': 'combustible', 'LUBRICANTES': 'lubricantes',
+        'AUTOPARTES': 'autopartes', 'TRANSPORTE': 'transporte',
         'ALIMENTOS_BALANCEADOS': 'alimentosBalanceados',
         'ALIMENTOS_CONGELADOS': 'alimentosCongelados',
       };
@@ -293,24 +312,28 @@ export async function rechazarLead(context: RequestContext, id: string, input: R
   if (context.rol === 'VENDEDOR') throw new Error('No tienes permiso para rechazar leads');
 
   const lead = await prisma.lead.findFirst({
-    where: {
-      id,
-      // MASTER puede rechazar cualquiera, ADMIN solo su empresa
-      ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {})
-    }
+    where: { id }
   });
   if (!lead) throw new Error('Lead no encontrado');
 
   // ADMIN solo puede rechazar leads de su empresa
   if (context.rol === 'ADMIN' && lead.empresaId !== context.tenantId) {
-    throw new Error('No puedes rechazar leads de otra empresa');
+    throw new Error('Solo puedes rechazar leads de tu empresa');
+  }
+
+  // ADMIN solo puede rechazar su rubro
+  if (context.rol === 'ADMIN') {
+    const miEmpresa = await prisma.empresa.findUnique({ where: { id: context.tenantId } });
+    if (miEmpresa?.rubro && input.rubro.toUpperCase() !== miEmpresa.rubro.toUpperCase()) {
+      throw new Error(`Solo puedes rechazar leads para el rubro ${miEmpresa.rubro}`);
+    }
   }
 
   return prisma.$transaction(async (tx) => {
     await tx.leadRechazo.create({
       data: {
         leadId: id,
-        empresaId: context.tenantId,
+        empresaId: lead.empresaId,
         rubro: input.rubro,
         motivo: input.motivo,
         rechazadoBy: context.userId
