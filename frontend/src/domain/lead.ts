@@ -92,6 +92,13 @@ export const LeadSchema = z.object({
     motivo: z.string(),
     createdAt: z.string(),
   })).optional(),
+  aprobaciones: z.array(z.object({
+    id: z.string(),
+    rubro: z.string(),
+    aprobadoBy: z.string(),
+    oportunidadId: z.string().nullable().optional(),
+    createdAt: z.string(),
+  })).optional(),
   crossSelling: z.object({
     combustible: z.enum(['COMPRA', 'NO_COMPRA', 'NA']),
     lubricantes: z.enum(['COMPRA', 'NO_COMPRA', 'NA']),

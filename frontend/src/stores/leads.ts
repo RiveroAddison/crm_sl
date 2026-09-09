@@ -65,10 +65,8 @@ export const useLeadsStore = defineStore('leads', () => {
     error.value = '';
     try {
       const response = await leadsApi.aprobar(leadId, input);
-      const index = leads.value.findIndex((l) => l.id === leadId);
-      if (index !== -1) {
-        leads.value[index] = { ...leads.value[index], estado: 'APROBADO' };
-      }
+      // Reload to get updated aprobaciones from server
+      await load(true);
       return response.data;
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Error al aprobar lead';

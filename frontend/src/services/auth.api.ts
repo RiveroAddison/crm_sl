@@ -34,7 +34,7 @@ export const authApi = {
 
   /** MASTER: cambia de empresa sin re-login. */
   async switchEmpresa(empresaId: string) {
-    const { data } = await http.post('/api/auth/switch-empresa', { empresaId }, { _skipRefresh: true });
+    const { data } = await http.post('/api/auth/switch-empresa', { empresaId });
     return SwitchEmpresaResponseSchema.parse(data);
   },
 

@@ -545,6 +545,7 @@ async function handleSwitchEmpresa(event: Event) {
     await auth.switchEmpresa(nuevaEmpresaId);
     await adminMaster.loadData();
     await leads.load();
+    await prospects.load(true);
   } catch (err) {
     alert(err instanceof Error ? err.message : 'Error al cambiar de empresa');
   }
@@ -1161,17 +1162,17 @@ onBeforeUnmount(() => {
                   <span
                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium"
                     :class="{
-                      'bg-emerald-100 text-emerald-700': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                      'bg-emerald-100 text-emerald-700': lead.aprobaciones?.some(a => a.rubro === rubro),
                       'bg-red-100 text-red-600': lead.rechazos?.some(r => r.rubro === rubro),
-                      'bg-slate-100 text-slate-400': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                      'bg-slate-100 text-slate-400': !lead.aprobaciones?.some(a => a.rubro === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
                     }"
                   >
                     <span
                       class="w-1 h-1 rounded-full"
                       :class="{
-                        'bg-emerald-500': lead.estado === 'APROBADO' && lead.rubroOriginal === rubro,
+                        'bg-emerald-500': lead.aprobaciones?.some(a => a.rubro === rubro),
                         'bg-red-400': lead.rechazos?.some(r => r.rubro === rubro),
-                        'bg-slate-300': !(lead.estado === 'APROBADO' && lead.rubroOriginal === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
+                        'bg-slate-300': !lead.aprobaciones?.some(a => a.rubro === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)
                       }"
                     ></span>
                     {{ rubro.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}

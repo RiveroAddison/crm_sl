@@ -277,6 +277,7 @@ model Oportunidad {
   clienteCorporativo   ClienteCorporativo? @relation(fields: [clienteCorporativoId], references: [id], onDelete: SetNull)
   lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
   actividades          ActividadOportunidad[]
+  aprobaciones         LeadAprobacion[]
 
   @@index([empresaId, vendedorId])
   @@index([empresaId, etapa])
@@ -333,6 +334,7 @@ model Lead {
   oportunidades       Oportunidad[]
   actividades         ActividadLead[]
   rechazos            LeadRechazo[]
+  aprobaciones        LeadAprobacion[]
 
   @@index([empresaId, estado])
   @@index([empresaId, estadoCalificacion])
@@ -389,6 +391,23 @@ model LeadRechazo {
   createdAt   DateTime @default(now())
 
   lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, rubro])
+  @@index([leadId])
+}
+
+/// Aprobaciones de leads por rubro
+model LeadAprobacion {
+  id              String   @id @default(uuid())
+  leadId          String
+  empresaId       String
+  rubro           String   // Rubro que fue aprobado
+  aprobadoBy      String   // Quién aprobó (usuarioId)
+  oportunidadId   String?  // Oportunidad creada desde esta aprobación
+  createdAt       DateTime @default(now())
+
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  oportunidad     Oportunidad? @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
 
   @@unique([leadId, rubro])
   @@index([leadId])

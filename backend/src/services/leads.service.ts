@@ -61,6 +61,7 @@ const include = {
     orderBy: { fecha: 'desc' as const }
   },
   rechazos: true,
+  aprobaciones: true,
   oportunidades: { select: { id: true, rubro: true, valorEstimado: true, etapa: true }, take: 1 }
 } as const;
 
@@ -185,15 +186,18 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
       // MASTER puede aprobar cualquiera, ADMIN/VENDEDOR solo su empresa
       ...(context.rol !== 'MASTER' ? { empresaId: context.tenantId } : {})
     },
-    include: { vendedor: true, cuentaComercial: true }
+    include: { vendedor: true, cuentaComercial: true, aprobaciones: true }
   });
   if (!lead) throw new Error('Lead no encontrado');
-  if (lead.estado === 'APROBADO') throw new Error('El lead ya fue aprobado');
 
   // ADMIN solo puede aprobar leads de su empresa
   if (context.rol === 'ADMIN' && lead.empresaId !== context.tenantId) {
     throw new Error('No puedes aprobar leads de otra empresa');
   }
+
+  // Verificar si ya fue aprobado para ESTE rubro
+  const aprobacionExistente = lead.aprobaciones.find(a => a.rubro === input.rubro);
+  if (aprobacionExistente) throw new Error(`El lead ya fue aprobado para el rubro ${input.rubro}`);
 
   const rechazoExistente = await prisma.leadRechazo.findUnique({
     where: { leadId_rubro: { leadId: id, rubro: input.rubro } }
@@ -242,10 +246,24 @@ export async function aprobarLead(context: RequestContext, id: string, input: Ap
       }
     });
 
-    await tx.lead.update({
-      where: { id: lead.id },
-      data: { estado: 'APROBADO', rubroOriginal: input.rubro }
+    // Crear registro de aprobación por rubro
+    await tx.leadAprobacion.create({
+      data: {
+        leadId: lead.id,
+        empresaId: lead.empresaId,
+        rubro: input.rubro,
+        aprobadoBy: context.userId,
+        oportunidadId: oportunidad.id,
+      }
     });
+
+    // Guardar rubro original si es la primera aprobación
+    if (!lead.rubroOriginal) {
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: { rubroOriginal: input.rubro }
+      });
+    }
 
     if (crossSellingInfo) {
       const updateData: Record<string, string> = {};

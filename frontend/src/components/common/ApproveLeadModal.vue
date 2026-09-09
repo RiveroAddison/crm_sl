@@ -63,14 +63,18 @@ const normalizeRubroLookup = (value?: string | null) => {
 };
 
 const rubros = computed(() => {
-  // MASTER ve todos los rubros
-  if (props.userRole === 'MASTER') return allRubros;
+  const aprobados = (props.lead.aprobaciones || []).map(a => a.rubro);
+  const rechazados = (props.lead.rechazos || []).map(r => r.rubro);
+  const excludeRubros = new Set([...aprobados, ...rechazados]);
 
-  // ADMIN: solo el rubro de la empresa activa
-  if (!props.userEmpresaRubro) return allRubros;
+  // MASTER ve todos los rubros (excepto aprobados/rechazados)
+  if (props.userRole === 'MASTER') return allRubros.filter(r => !excludeRubros.has(r.value));
+
+  // ADMIN: solo el rubro de la empresa activa (si no está aprobado/rechazado)
+  if (!props.userEmpresaRubro) return allRubros.filter(r => !excludeRubros.has(r.value));
   const rubroValue = normalizeRubroLookup(props.userEmpresaRubro);
-  if (!rubroValue) return allRubros;
-  return allRubros.filter(r => r.value === rubroValue);
+  if (!rubroValue) return allRubros.filter(r => !excludeRubros.has(r.value));
+  return allRubros.filter(r => r.value === rubroValue && !excludeRubros.has(r.value));
 });
 
 // Para MASTER: cargar todos los tipos de cliente (sin filtro de empresa)
