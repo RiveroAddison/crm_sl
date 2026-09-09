@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getMasterOrAdminContext, getRequestContext } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
 
 const usuarioEmpresaSchema = z.object({
   empresaId: z.string().uuid(),
@@ -83,7 +84,7 @@ export async function list(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al listar usuarios:', error);
+    logger.error({ err: error }, 'Error al listar usuarios');
     return res.status(500).json({ success: false, data: null, error: 'Error al listar usuarios' });
   }
 }
@@ -127,7 +128,7 @@ export async function get(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al obtener usuario:', error);
+    logger.error({ err: error }, 'Error al obtener usuario');
     return res.status(500).json({ success: false, data: null, error: 'Error al obtener usuario' });
   }
 }
@@ -234,7 +235,7 @@ export async function create(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al crear usuario:', error);
+    logger.error({ err: error }, 'Error al crear usuario');
     return res.status(500).json({ success: false, data: null, error: 'Error al crear usuario' });
   }
 }
@@ -376,7 +377,7 @@ export async function update(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al actualizar usuario:', error);
+    logger.error({ err: error }, 'Error al actualizar usuario');
     return res.status(500).json({ success: false, data: null, error: 'Error al actualizar usuario' });
   }
 }
@@ -425,7 +426,7 @@ export async function listVendedoresByEmpresa(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al listar vendedores por empresa:', error);
+    logger.error({ err: error }, 'Error al listar vendedores por empresa');
     return res.status(500).json({ success: false, data: null, error: 'Error al listar vendedores' });
   }
 }
@@ -506,7 +507,7 @@ export async function listVendedoresByRubro(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al listar vendedores por rubro:', error);
+    logger.error({ err: error }, 'Error al listar vendedores por rubro');
     return res.status(500).json({ success: false, data: null, error: 'Error al listar vendedores por rubro' });
   }
 }
@@ -537,7 +538,7 @@ export async function remove(req: Request, res: Response) {
       error: ''
     });
   } catch (error) {
-    console.error('Error al eliminar usuario:', error);
+    logger.error({ err: error }, 'Error al eliminar usuario');
     // Si falla por otras restricciones de llaves foráneas, podemos deactivarlo en su lugar
     try {
       const id = req.params.id as string;

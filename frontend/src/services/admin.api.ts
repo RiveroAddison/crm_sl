@@ -91,6 +91,11 @@ export const empresasApi = {
     return TestConexionResponseSchema.parse(data).data;
   },
 
+  async testConnectionByEmpresaId(empresaId: string): Promise<{ ok: boolean; message: string }> {
+    const { data } = await http.post(`/api/empresas/${empresaId}/test-connection`);
+    return data.data;
+  },
+
   async syncFromGrupo(grupoEmpresaId: string): Promise<{ ok: boolean; created: number; updated: number; unchanged: number; errors: string[] }> {
     const { data } = await http.post('/api/empresas/sync-from-grupo', { grupoEmpresaId });
     return data.data;

@@ -44,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
         empresa.value = me.empresa;
         tenantId.value = me.tenantId;
         rol.value = me.rol;
+        empresas.value = me.empresas;
         isHydrated.value = true;
       } else {
         await clearLocalSession();

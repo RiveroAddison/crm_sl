@@ -2,6 +2,7 @@ import sql from 'mssql';
 import type { Empresa } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { buildProfitConfig, connectWithRetry } from '../lib/profitConnection.js';
+import { encrypt, decrypt, isEncrypted } from '../lib/encryption.js';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -52,6 +53,11 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
       return result;
     }
 
+    // Cifrar credenciales del grupo para guardarlas en empresas hijas
+    const encryptedPassword = isEncrypted(grupo.profitDbPassword)
+      ? grupo.profitDbPassword
+      : encrypt(grupo.profitDbPassword);
+
     // 3. Para cada empresa del grupo, hacer upsert
     for (const row of rs.recordset) {
       try {
@@ -70,13 +76,19 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
           : null;
 
         if (existing) {
+          // Descifrar password existente para comparar
+          const existingPassword = existing.profitDbPassword
+            ? decrypt(existing.profitDbPassword)
+            : null;
+          const grupoPassword = decrypt(encryptedPassword);
+
           // Actualizar si hay cambios
           const needsUpdate =
             existing.nombre !== nombre ||
             existing.profitDbName !== codEmp ||
             existing.profitDbHost !== grupo.profitDbHost ||
             existing.profitDbUser !== grupo.profitDbUser ||
-            existing.profitDbPassword !== grupo.profitDbPassword;
+            existingPassword !== grupoPassword;
 
           if (needsUpdate) {
             await prisma.empresa.update({
@@ -86,7 +98,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
                 profitDbName: codEmp,
                 profitDbHost: grupo.profitDbHost,
                 profitDbUser: grupo.profitDbUser,
-                profitDbPassword: grupo.profitDbPassword,
+                profitDbPassword: encryptedPassword,
               },
             });
             result.updated++;
@@ -102,7 +114,7 @@ export async function syncEmpresasFromGrupo(grupoEmpresaId: string): Promise<Emp
               profitDbHost: grupo.profitDbHost,
               profitDbName: codEmp,
               profitDbUser: grupo.profitDbUser,
-              profitDbPassword: grupo.profitDbPassword,
+              profitDbPassword: encryptedPassword,
               activo: true,
             },
           });

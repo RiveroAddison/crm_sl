@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import type { Empresa } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { buildProfitConfig, connectWithRetry } from '../lib/profitConnection.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * Servicio de sincronización con Profit Plus (MSSQL).
@@ -155,7 +156,7 @@ export async function testConect(empresa: Empresa): Promise<ProfitDiagnostic> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[profitSync] Diagnostico fallido para ${empresa.nombre}:`, message);
+    logger.error({ err: error }, `[profitSync] Diagnostico fallido para ${empresa.nombre}`);
     return { ok: false, vendedorCount: 0, clienteCount: 0, ventaCount: 0, error: message };
   } finally {
     try {
@@ -257,14 +258,14 @@ export async function syncSellersForEmpresa(empresa: Empresa): Promise<SyncResul
         stats.errors += 1;
         const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
         recordSample(stats, { cod: asString(row?.cod), motivo: msg });
-        console.error(`[profitSync:${empresa.nombre}] vendedor ${row?.cod} fallo:`, msg);
+        logger.error({ err: rowErr }, `[profitSync:${empresa.nombre}] vendedor ${row?.cod} fallo`);
       }
     }
 
     return { empresa: empresa.nombre, ok: true, stats };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[profitSync] syncSellers error para ${empresa.nombre}:`, message);
+    logger.error({ err: error }, `[profitSync] syncSellers error para ${empresa.nombre}`);
     return { empresa: empresa.nombre, ok: false, stats, error: message };
   } finally {
     try {
@@ -415,14 +416,14 @@ export async function syncClientesForEmpresa(empresa: Empresa): Promise<SyncResu
         stats.errors += 1;
         const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
         recordSample(stats, { cod: asString(row?.cod), rif: asString(row?.rif), motivo: msg });
-        console.error(`[profitSync:${empresa.nombre}] cliente ${row?.cod} fallo:`, msg);
+        logger.error({ err: rowErr }, `[profitSync:${empresa.nombre}] cliente ${row?.cod} fallo`);
       }
     }
 
     return { empresa: empresa.nombre, ok: true, stats };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[profitSync] syncClientes error para ${empresa.nombre}:`, message);
+    logger.error({ err: error }, `[profitSync] syncClientes error para ${empresa.nombre}`);
     return { empresa: empresa.nombre, ok: false, stats, error: message };
   } finally {
     try {
@@ -565,7 +566,7 @@ export async function syncVentasForEmpresa(empresa: Empresa): Promise<SyncResult
         stats.errors += 1;
         const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
         recordSample(stats, { documento: asString(row?.num_nde), motivo: msg });
-        console.error(`[profitSync:${empresa.nombre}] venta ${row?.num_nde} fallo:`, msg);
+        logger.error({ err: rowErr }, `[profitSync:${empresa.nombre}] venta ${row?.num_nde} fallo`);
       }
     }
 
@@ -603,14 +604,14 @@ export async function syncVentasForEmpresa(empresa: Empresa): Promise<SyncResult
         stats.errors += 1;
         const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
         recordSample(stats, { documento: a.documento, motivo: msg });
-        console.error(`[profitSync:${empresa.nombre}] upsert venta ${a.documento} fallo:`, msg);
+        logger.error({ err: rowErr }, `[profitSync:${empresa.nombre}] upsert venta ${a.documento} fallo`);
       }
     }
 
     return { empresa: empresa.nombre, ok: true, stats };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[profitSync] syncVentas error para ${empresa.nombre}:`, message);
+    logger.error({ err: error }, `[profitSync] syncVentas error para ${empresa.nombre}`);
     return { empresa: empresa.nombre, ok: false, stats, error: message };
   } finally {
     try {

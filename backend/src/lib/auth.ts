@@ -1,21 +1,34 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
+import { logger } from './logger.js';
 
 const configuredSecret = process.env.JWT_SECRET;
 const configuredRefreshSecret = process.env.JWT_REFRESH_SECRET;
 
-if (!configuredSecret || configuredSecret === 'replace-with-a-long-random-secret') {
-  console.warn('[SECURITY WARNING] JWT_SECRET utiliza una clave predeterminada o no configurada.');
+const isProd = process.env.NODE_ENV === 'production';
+
+  if (!configuredSecret || configuredSecret === 'replace-with-a-long-random-secret') {
+  if (isProd) {
+    throw new Error(
+      '[SECURITY] JWT_SECRET es requerido en producción. Defina una cadena larga y aleatoria en la variable de entorno.',
+    );
+  }
+  logger.warn('[SECURITY WARNING] JWT_SECRET no configurado. Usando solo para desarrollo.');
 }
 if (!configuredRefreshSecret || configuredRefreshSecret === 'replace-with-a-long-random-secret') {
-  console.warn(
-    '[SECURITY WARNING] JWT_REFRESH_SECRET no configurado. Usando fallback; DEFINA UNO FUERTE en produccion.',
+  if (isProd) {
+    throw new Error(
+      '[SECURITY] JWT_REFRESH_SECRET es requerido en producción. Defina una cadena larga y aleatoria en la variable de entorno.',
+    );
+  }
+  logger.warn(
+    '[SECURITY WARNING] JWT_REFRESH_SECRET no configurado. Usando solo para desarrollo.',
   );
 }
 
-const jwtSecret: string = configuredSecret || 'default-fallback-secret-key-change-in-prod';
+const jwtSecret: string = configuredSecret || 'dev-only-fallback-secret-not-for-production';
 const jwtRefreshSecret: string =
-  configuredRefreshSecret || 'default-refresh-fallback-secret-key-change-in-prod';
+  configuredRefreshSecret || 'dev-only-refresh-fallback-secret-not-for-production';
 
 // TTLs configurables por env. Defaults razonables para una API de gestion.
 const ACCESS_TTL_RAW = process.env.ACCESS_TOKEN_TTL || '15m';
@@ -108,7 +121,7 @@ export function generateTokenId(): string {
 function parseDuration(input: string): number {
   const match = /^(\d+)\s*(ms|s|m|h|d)$/i.exec(input.trim());
   if (!match) {
-    console.warn(`[AUTH] Duracion invalida "${input}", usando 7d por defecto.`);
+    logger.warn(`[AUTH] Duracion invalida "${input}", usando 7d por defecto.`);
     return 7 * 24 * 60 * 60 * 1000;
   }
   const value = Number(match[1]);

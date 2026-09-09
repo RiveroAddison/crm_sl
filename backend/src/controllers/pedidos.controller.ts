@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { getRequestContext } from '../middleware/auth.js';
 import { createOrder, listOrders, updateOrderStatus } from '../services/pedidos.service.js';
+import { sanitizeError } from '../utils/index.js';
+import type { RequestContext } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
 
 const orderSchema = z
   .object({
@@ -29,11 +31,11 @@ const statusSchema = z.object({
 
 export async function list(req: Request, res: Response) {
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const orders = await listOrders(context);
     return res.json({ success: true, data: orders, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[pedidos] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible cargar los pedidos' });
   }
 }
@@ -49,15 +51,14 @@ export async function create(req: Request, res: Response) {
   }
 
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const order = await createOrder(context, parsed.data);
     return res.status(201).json({ success: true, data: order, error: '' });
   } catch (cause) {
     return res.status(400).json({
       success: false,
       data: null,
-      error: cause instanceof Error ? cause.message : 'No fue posible crear el pedido'
+      error: sanitizeError(cause, 'No fue posible crear el pedido')
     });
   }
 }
@@ -73,15 +74,14 @@ export async function updateStatus(req: Request, res: Response) {
   }
 
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const order = await updateOrderStatus(context, String(req.params.id), parsed.data.estado);
     return res.json({ success: true, data: order, error: '' });
   } catch (cause) {
     return res.status(404).json({
       success: false,
       data: null,
-      error: cause instanceof Error ? cause.message : 'No fue posible actualizar el pedido'
+      error: sanitizeError(cause, 'No fue posible actualizar el pedido')
     });
   }
 }

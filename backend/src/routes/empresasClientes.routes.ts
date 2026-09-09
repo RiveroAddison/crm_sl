@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { getRequestContext } from '../middleware/auth.js';
 import { normalizeNombre, normalizeRif } from '../services/cuentasComerciales.service.js';
+import { requireAuth } from '../middleware/auth.js';
+import type { RequestContext } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 
@@ -14,40 +16,39 @@ const empresaClienteSchema = z.object({
   direccion: z.string().optional(),
 });
 
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const items = await prisma.cuentaComercial.findMany({
       where: { empresaId: context.tenantId, activo: true },
       orderBy: { nombre: 'asc' },
     });
     return res.json({ success: true, data: items, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[empresasClientes] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible cargar las empresas clientes' });
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const item = await prisma.cuentaComercial.findFirst({
       where: { id: String(req.params.id), empresaId: context.tenantId, activo: true },
     });
     if (!item) return res.status(404).json({ success: false, data: null, error: 'Empresa cliente no encontrada' });
     return res.json({ success: true, data: item, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[empresasClientes] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible obtener la empresa cliente' });
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const parsed = empresaClienteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, data: null, error: parsed.error.issues[0]?.message || 'Datos inválidos' });
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const candidates = await prisma.cuentaComercial.findMany({ where: { empresaId: context.tenantId, activo: true } });
     const existing = candidates.find((item) => normalizeNombre(item.nombre) === normalizeNombre(parsed.data.nombre));
     if (existing) return res.status(409).json({ success: false, data: null, error: 'Ya existe una empresa cliente con ese nombre' });
@@ -66,17 +67,17 @@ router.post('/', async (req, res) => {
       },
     });
     return res.status(201).json({ success: true, data: item, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[empresasClientes] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible crear la empresa cliente' });
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   const parsed = empresaClienteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, data: null, error: parsed.error.issues[0]?.message || 'Datos inválidos' });
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const existing = await prisma.cuentaComercial.findFirst({
       where: { id: String(req.params.id), empresaId: context.tenantId },
     });
@@ -98,22 +99,23 @@ router.put('/:id', async (req, res) => {
       },
     });
     return res.json({ success: true, data: item, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[empresasClientes] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible actualizar la empresa cliente' });
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const existing = await prisma.cuentaComercial.findFirst({
       where: { id: String(req.params.id), empresaId: context.tenantId },
     });
     if (!existing) return res.status(404).json({ success: false, data: null, error: 'Empresa cliente no encontrada' });
     await prisma.cuentaComercial.update({ where: { id: existing.id }, data: { activo: false } });
     return res.json({ success: true, data: { id: existing.id }, error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[empresasClientes] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible eliminar la empresa cliente' });
   }
 });

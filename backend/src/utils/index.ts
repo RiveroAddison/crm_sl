@@ -15,3 +15,6 @@ export {
   logRateLimitSummary,
 } from './rateLimit.js';
 
+// Error sanitization
+export { sanitizeError, errorStatus } from './errors.js';
+

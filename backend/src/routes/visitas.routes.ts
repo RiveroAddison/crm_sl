@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getRequestContext } from '../middleware/auth.js';
 import { listVisits, registerCheckIn } from '../services/visitas.service.js';
+import { sanitizeError, errorStatus } from '../utils/index.js';
+import { requireAuth } from '../middleware/auth.js';
+import type { RequestContext } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 const checkInSchema = z.object({
@@ -14,27 +17,26 @@ const checkInSchema = z.object({
   comentario: z.string().max(500).optional()
 });
 
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     return res.json({ success: true, data: await listVisits(context), error: '' });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[visitas] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible cargar las visitas' });
   }
 });
 
-router.post('/checkin', async (req, res) => {
+router.post('/checkin', requireAuth, async (req, res) => {
   const parsed = checkInSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, data: null, error: parsed.error.issues[0]?.message || 'Check-in inválido' });
   try {
-    const context = await getRequestContext(req);
-    if (!context) return res.status(401).json({ success: false, data: null, error: 'No autenticado' });
+    const context = req.context as RequestContext;
     const visit = await registerCheckIn(context, parsed.data);
     return res.status(201).json({ success: true, data: visit, error: '' });
   } catch (cause) {
-    const message = cause instanceof Error ? cause.message : 'No fue posible registrar el check-in';
-    return res.status(message.includes('Cliente no encontrado') ? 404 : 500).json({ success: false, data: null, error: message });
+    const message = sanitizeError(cause, 'No fue posible registrar el check-in');
+    return res.status(errorStatus(message)).json({ success: false, data: null, error: message });
   }
 });
 

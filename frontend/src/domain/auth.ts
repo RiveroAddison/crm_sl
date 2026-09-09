@@ -64,6 +64,7 @@ export const MeDataSchema = z.object({
   tenantNombre: z.string(),
   empresa: EmpresaAuthSchema,
   rol: RolSchema,
+  empresas: z.array(EmpresaAuthSchema),
 });
 export const MeResponseSchema = ApiEnvelopeSchema(MeDataSchema);
 export type MeData = z.infer<typeof MeDataSchema>;

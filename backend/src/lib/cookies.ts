@@ -31,17 +31,28 @@ export function parseCookies(req: Request): Record<string, string> {
     const parts = cookie.split('=');
     if (parts.length >= 2) {
       const name = parts[0].trim();
-      const val = parts.slice(1).join('=').trim();
+      const val = parts.slice(1, ).join('=').trim();
       list[name] = decodeURIComponent(val);
     }
   }
   return list;
 }
 
+// Determinar si el servidor está detrás de un proxy (Nginx, Cloudflare, etc.)
+const isSecureEnv = process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true';
+
 const baseCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: isSecureEnv,
   sameSite: 'lax' as const,
+  path: '/',
+};
+
+// Cookie de refresh: más restrictiva con sameSite
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isSecureEnv,
+  sameSite: 'strict' as const,
   path: '/',
 };
 
@@ -54,8 +65,7 @@ export function setAccessCookie(res: Response, token: string): void {
 
 export function setRefreshCookie(res: Response, token: string): void {
   res.cookie(REFRESH_COOKIE, token, {
-    ...baseCookieOptions,
-    // La cookie de refresh debe sobrevivir al cierre del navegador.
+    ...refreshCookieOptions,
     maxAge: refreshTtlMs(),
   });
 }
@@ -67,7 +77,7 @@ export function setSessionCookie(res: Response, accessToken: string, refreshToke
 
 export function clearSessionCookie(res: Response): void {
   res.clearCookie(ACCESS_COOKIE, { ...baseCookieOptions });
-  res.clearCookie(REFRESH_COOKIE, { ...baseCookieOptions });
+  res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions });
 }
 
 export function getAccessTokenFromReq(req: Request): string | null {

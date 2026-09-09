@@ -20,6 +20,7 @@ import {
   getAccessTokenFromReq,
   getRefreshTokenFromReq,
 } from '../lib/cookies.js';
+import { logger } from '../lib/logger.js';
 
 // Hash dummy constante para mitigar timing attacks (prevencion de enumeracion de usuarios)
 const DUMMY_HASH = '$2a$10$e7qJtq986P4m20w8.H44u.Sg3P/j2Vv7xX3N8g9f.e/W1b2c3d4e5';
@@ -85,7 +86,8 @@ export async function login(req: Request, res: Response) {
       },
       error: '',
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[auth] Error');
     return res.status(500).json({ success: false, data: null, error: 'No fue posible iniciar sesion' });
   }
 }
@@ -154,7 +156,8 @@ export async function selectContext(req: Request, res: Response) {
       },
       error: '',
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[auth] Error');
     return res.status(401).json({ success: false, data: null, error: 'Sesion o token pre-autenticacion expirado' });
   }
 }
@@ -217,7 +220,7 @@ export async function switchEmpresa(req: Request, res: Response) {
             data: { revokedAt: new Date() }
           });
         }
-      } catch { /* ignorar */ }
+      } catch (err) { logger.error({ err }, '[auth] Error en revocación'); }
     }
 
     // Crear nuevos tokens
@@ -258,7 +261,8 @@ export async function switchEmpresa(req: Request, res: Response) {
       },
       error: '',
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[auth] Error');
     return res.status(500).json({ success: false, data: null, error: 'Error al cambiar de empresa' });
   }
 }
@@ -368,7 +372,8 @@ export async function refresh(req: Request, res: Response) {
       },
       error: '',
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[auth] Error');
     return res.status(401).json({ success: false, data: null, error: 'Refresh token invalido' });
   }
 }
@@ -409,6 +414,14 @@ export async function me(req: Request, res: Response) {
     const rolGlobal = hasMasterGlobal ? 'MASTER' : hasAdminGlobal ? 'ADMIN' : 'VENDEDOR';
     const rol = (ctx.rol === 'MASTER' ? 'MASTER' : ctx.rol === 'ADMIN' ? 'ADMIN' : 'VENDEDOR') as 'MASTER' | 'ADMIN' | 'VENDEDOR';
 
+    const empresas = user.usuarioEmpresas.map((ue) => ({
+      id: ue.empresa.id,
+      nombre: ue.empresa.nombre,
+      rubro: ue.empresa.rubro,
+      direccion: ue.empresa.direccion,
+      telefono: ue.empresa.telefono,
+    }));
+
     return res.json({
       success: true,
       data: {
@@ -418,10 +431,12 @@ export async function me(req: Request, res: Response) {
         tenantNombre: ctx.empresa.nombre,
         empresa: { id: ctx.empresa.id, nombre: ctx.empresa.nombre, rubro: ctx.empresa.rubro, direccion: ctx.empresa.direccion, telefono: ctx.empresa.telefono },
         rol,
+        empresas,
       },
       error: '',
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, '[auth] Error');
     return res.status(401).json({ success: false, data: null, error: 'Sesion expirada' });
   }
 }
@@ -438,8 +453,8 @@ export async function logout(req: Request, res: Response) {
           data: { revokedAt: new Date() },
         });
       }
-    } catch {
-      // ignoramos: igual limpiamos la cookie
+    } catch (err) {
+      logger.error({ err }, '[auth] Error en revocación');
     }
   }
   clearSessionCookie(res);

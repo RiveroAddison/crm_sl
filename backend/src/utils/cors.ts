@@ -1,5 +1,6 @@
 // filepath: src/utils/cors.ts
 import cors, { type CorsOptions } from 'cors';
+import { logger } from '../lib/logger.js';
 
 /**
  * Lista de origenes permitidos por CORS.
@@ -20,7 +21,7 @@ const allowedOrigins = allowAllOrigins
       .filter((o) => o.length > 0);
 
 if (!allowAllOrigins && allowedOrigins.length === 0) {
-  console.warn(
+  logger.warn(
     '[CORS] No se definieron origenes en CORS_ORIGINS. Solo se permitiran mismas-origen (same-origin).',
   );
 }
@@ -70,8 +71,8 @@ export const corsMiddleware = cors(corsOptions);
 /** Log de auditoria al arrancar el servidor. */
 export const logCorsSummary = (): void => {
   if (allowAllOrigins) {
-    console.log('[CORS] ADVERTENCIA: todos los origenes estan permitidos (CORS_ORIGINS="*").');
+    logger.info('[CORS] ADVERTENCIA: todos los origenes estan permitidos (CORS_ORIGINS="*").');
   } else {
-    console.log(`[CORS] Origenes permitidos: ${allowedOrigins.join(', ') || '(ninguno)'}`);
+    logger.info(`[CORS] Origenes permitidos: ${allowedOrigins.join(', ') || '(ninguno)'}`);
   }
 };

@@ -7,7 +7,7 @@ import { useLeadsStore } from '../stores/leads';
 import { usePedidosStore } from '../stores/pedidos';
 import { useAdminMasterStore } from '../stores/adminMaster';
 import { useVisitasStore } from '../stores/visitas';
-import { cuentasComercialesApi } from '../services';
+import { cuentasComercialesApi, empresasApi } from '../services';
 import type { CuentaComercial, EtapaOportunidad, VisitaGps, Rol, Lead, AprobarLeadInput, RechazarLeadInput, ActividadOportunidad, CreateActividadOportunidadInput } from '../domain';
 import ApproveLeadModal from '../components/common/ApproveLeadModal.vue';
 import RejectLeadModal from '../components/common/RejectLeadModal.vue';
@@ -164,16 +164,15 @@ async function removeEmpresa(id: string) {
 }
 
 async function testCurrentEmpresaConnection() {
+  if (!editingEmpresaId.value) {
+    testConnResult.value = { connected: false, message: 'Primero guarde la empresa antes de probar la conexión' };
+    return;
+  }
   testConnLoading.value = true;
   testConnResult.value = null;
   try {
-    const res = await adminMaster.testConnection({
-      host: empresaForm.value.profitDbHost,
-      name: empresaForm.value.profitDbName,
-      user: empresaForm.value.profitDbUser,
-      password: empresaForm.value.profitDbPassword
-    });
-    testConnResult.value = res;
+    const res = await empresasApi.testConnectionByEmpresaId(editingEmpresaId.value);
+    testConnResult.value = { connected: res.ok, message: res.message };
   } catch (err) {
     testConnResult.value = { connected: false, message: err instanceof Error ? err.message : 'Error de conexión' };
   } finally {
@@ -184,10 +183,18 @@ async function testCurrentEmpresaConnection() {
 async function runSyncClientes() {
   syncRunning.value = true;
   try {
-    await adminMaster.syncClientes(syncEmpresaId.value || undefined);
-    alert('¡Sincronización de clientes con Profit completada con éxito!');
+    const res = await adminMaster.syncClientes(syncEmpresaId.value || undefined);
+    const hasErrors = res.results?.some((r: any) => !r.success);
+    if (hasErrors) {
+      const failedItems = res.results.filter((r: any) => !r.success);
+      const details = failedItems.map((r: any) => `${r.empresa || 'Empresa'}: ${r.error || 'Error de conexión o sincronización'}`).join(' | ');
+      alert(`Sincronización completada con observaciones:\n${details}`);
+    } else {
+      alert(res.message || '¡Sincronización de clientes con Profit completada con éxito!');
+    }
   } catch (err) {
-    alert(err instanceof Error ? err.message : 'Error al sincronizar clientes');
+    const msg = err instanceof Error ? err.message : 'Error al sincronizar clientes';
+    alert(`No fue posible completar la sincronización de clientes: ${msg}`);
   } finally {
     syncRunning.value = false;
   }
@@ -196,10 +203,18 @@ async function runSyncClientes() {
 async function runSyncVentas() {
   syncRunning.value = true;
   try {
-    await adminMaster.syncVentas(syncEmpresaId.value || undefined);
-    alert('¡Sincronización de ventas con Profit completada con éxito!');
+    const res = await adminMaster.syncVentas(syncEmpresaId.value || undefined);
+    const hasErrors = res.results?.some((r: any) => !r.success);
+    if (hasErrors) {
+      const failedItems = res.results.filter((r: any) => !r.success);
+      const details = failedItems.map((r: any) => `${r.empresa || 'Empresa'}: ${r.error || 'Error de conexión o sincronización'}`).join(' | ');
+      alert(`Sincronización completada con observaciones:\n${details}`);
+    } else {
+      alert(res.message || '¡Sincronización de ventas con Profit completada con éxito!');
+    }
   } catch (err) {
-    alert(err instanceof Error ? err.message : 'Error al sincronizar ventas');
+    const msg = err instanceof Error ? err.message : 'Error al sincronizar ventas';
+    alert(`No fue posible completar la sincronización de ventas: ${msg}`);
   } finally {
     syncRunning.value = false;
   }
@@ -208,10 +223,19 @@ async function runSyncVentas() {
 async function runSyncAll() {
   syncRunning.value = true;
   try {
-    await adminMaster.syncAll(syncEmpresaId.value || undefined);
-    alert('¡Sincronización general (Clientes y Ventas) ejecutada exitosamente!');
+    const res = await adminMaster.syncAll(syncEmpresaId.value || undefined);
+    const allResults = [...(res.clientes || []), ...(res.ventas || [])];
+    const hasErrors = allResults.some((r: any) => !r.success);
+    if (hasErrors) {
+      const failedItems = allResults.filter((r: any) => !r.success);
+      const details = failedItems.map((r: any) => `${r.empresa || 'Empresa'}: ${r.error || 'Error de conexión o sincronización'}`).join(' | ');
+      alert(`Sincronización general completada con observaciones:\n${details}`);
+    } else {
+      alert(res.message || '¡Sincronización general (Clientes y Ventas) ejecutada exitosamente!');
+    }
   } catch (err) {
-    alert(err instanceof Error ? err.message : 'Error al sincronizar');
+    const msg = err instanceof Error ? err.message : 'Error al sincronizar';
+    alert(`No fue posible completar la sincronización general: ${msg}`);
   } finally {
     syncRunning.value = false;
   }

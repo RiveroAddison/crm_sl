@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { openapi } from './docs/openapi.js';
+import { logger } from './lib/logger.js';
 import authRouter from './routes/auth.routes.js';
 import dashboardRouter from './routes/dashboard.routes.js';
 import leadsRouter from './routes/leads.routes.js';
@@ -60,7 +61,7 @@ app.use(corsErrorHandler);
 
 // Error handler global: captura errores MSSQL no atrapados y errores internos.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[server] Error no capturado:', err);
+  logger.error({ err }, '[server] Error no capturado');
   if (err.message?.includes('Failed to connect') || err.message?.includes('ConnectionError')) {
     return res.status(503).json({
       success: false,
@@ -78,7 +79,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(port, () => {
   logCorsSummary();
   logRateLimitSummary();
-  console.log(`API CRM escuchando en http://localhost:${port}`);
+  logger.info({ port }, 'API CRM escuchando');
 });
 
 

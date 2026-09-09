@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getMasterOrAdminContext } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
 import {
   syncAllForEmpresa,
   syncClientesForEmpresa,
@@ -57,7 +58,7 @@ export async function syncAll(req: Request, res: Response) {
     const ok = all.every((r) => r.ok);
 
     return res.json({
-      success: ok,
+      success: true,
       data: {
         message: ok
           ? 'Sincronización completa con Profit Plus ejecutada'
@@ -65,10 +66,10 @@ export async function syncAll(req: Request, res: Response) {
         clientes,
         ventas
       },
-      error: ''
+      error: ok ? '' : 'La sincronización general presentó errores en algunas empresas'
     });
   } catch (error) {
-    console.error('Error en sincronización general con Profit:', error);
+    logger.error({ err: error }, 'Error en sincronización general con Profit');
     return res.status(500).json({ success: false, data: null, error: 'Error al ejecutar sincronización con Profit' });
   }
 }
@@ -98,9 +99,9 @@ export async function syncSellers(req: Request, res: Response) {
       results.push(toFrontendShape(r));
     }
     const ok = results.every((r) => r.success);
-    return res.json({ success: ok, data: { message: 'Sincronización de vendedores', results }, error: '' });
+    return res.json({ success: true, data: { message: ok ? 'Sincronización de vendedores' : 'Sincronización de vendedores con errores', results }, error: ok ? '' : 'Algunas empresas presentaron errores' });
   } catch (error) {
-    console.error('Error en sincronización de vendedores:', error);
+    logger.error({ err: error }, 'Error en sincronización de vendedores');
     return res.status(500).json({ success: false, data: null, error: 'Error al sincronizar vendedores' });
   }
 }
@@ -130,9 +131,9 @@ export async function syncClientes(req: Request, res: Response) {
       results.push(toFrontendShape(r));
     }
     const ok = results.every((r) => r.success);
-    return res.json({ success: ok, data: { message: 'Sincronización de clientes', results }, error: '' });
+    return res.json({ success: true, data: { message: ok ? 'Sincronización de clientes' : 'Sincronización de clientes con errores', results }, error: ok ? '' : 'Algunas empresas presentaron errores' });
   } catch (error) {
-    console.error('Error en sincronización de clientes:', error);
+    logger.error({ err: error }, 'Error en sincronización de clientes');
     return res.status(500).json({ success: false, data: null, error: 'Error al sincronizar clientes' });
   }
 }
@@ -162,9 +163,9 @@ export async function syncVentas(req: Request, res: Response) {
       results.push(toFrontendShape(r));
     }
     const ok = results.every((r) => r.success);
-    return res.json({ success: ok, data: { message: 'Sincronización de ventas', results }, error: '' });
+    return res.json({ success: true, data: { message: ok ? 'Sincronización de ventas' : 'Sincronización de ventas con errores', results }, error: ok ? '' : 'Algunas empresas presentaron errores' });
   } catch (error) {
-    console.error('Error en sincronización de ventas:', error);
+    logger.error({ err: error }, 'Error en sincronización de ventas');
     return res.status(500).json({ success: false, data: null, error: 'Error al sincronizar ventas' });
   }
 }
@@ -178,20 +179,20 @@ export async function getStatus(req: Request, res: Response) {
 
     const empresas = await prisma.empresa.findMany({
       where: { activo: true },
-      select: { id: true, nombre: true, profitDbHost: true, profitDbName: true, updatedAt: true }
+      select: { id: true, nombre: true, profitDbUser: true, updatedAt: true }
     });
 
     return res.json({
       success: true,
       data: empresas.map(e => ({
         ...e,
-        configured: Boolean(e.profitDbHost && e.profitDbName),
+        configured: Boolean(e.profitDbUser),
         lastSync: e.updatedAt
       })),
       error: ''
     });
   } catch (error) {
-    console.error('Error al obtener estado Profit:', error);
+    logger.error({ err: error }, 'Error al obtener estado Profit');
     return res.status(500).json({ success: false, data: null, error: 'Error al obtener estado' });
   }
 }
@@ -212,7 +213,7 @@ export async function testConectDB(req: Request, res: Response) {
     const data = await testConect(empresa);
     return res.json({ success: true, data: data, error: '' });
   } catch (error) {
-    console.error('Error al probar conexión con Profit:', error);
+    logger.error({ err: error }, 'Error al probar conexión con Profit');
     return res.status(500).json({ success: false, data: null, error: 'Error al probar conexión con Profit' });
   }
 }
