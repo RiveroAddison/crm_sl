@@ -11,6 +11,7 @@ const props = defineProps<{
   userRole: string;
   userEmpresaId: string;
   userEmpresaRubro: string;
+  initialRubro?: string;
 }>();
 
 const emit = defineEmits<{
@@ -18,7 +19,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const rubro = ref('');
+const rubro = ref(props.initialRubro || '');
 const estimadoCompra = ref(0);
 const necesidadUnidades = ref(1);
 const fechaEstimadaCierre = ref('');

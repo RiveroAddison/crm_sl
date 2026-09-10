@@ -30,6 +30,7 @@ const showEmpresaModal = ref(false);
 const showApproveModal = ref(false);
 const showRejectModal = ref(false);
 const selectedLeadForAction = ref<Lead | null>(null);
+const selectedRubroForAction = ref<string | null>(null);
 const leadActionError = ref('');
 const actividadesExpandidas = ref<string[]>([]);
 const actividadesOportunidadExpandidas = ref<string[]>([]);
@@ -388,8 +389,9 @@ async function promoteLead(id: string) {
   }
 }
 
-function openApproveModal(lead: Lead) {
+function openApproveModal(lead: Lead, rubro?: string) {
   selectedLeadForAction.value = lead;
+  selectedRubroForAction.value = rubro || null;
   leadActionError.value = '';
   showApproveModal.value = true;
 }
@@ -1134,11 +1136,6 @@ onBeforeUnmount(() => {
                     <option value="DESCARTADO">Descartado</option>
                   </select>
                   <button
-                    v-if="lead.estado === 'ACTIVO' && (lead.aprobaciones?.length || 0) + (lead.rechazos?.length || 0) < 6"
-                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
-                    @click="openApproveModal(lead)"
-                  >✓ Aprobar</button>
-                  <button
                     v-if="lead.estado === 'ACTIVO' && (lead.rechazos?.length || 0) < 6"
                     class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
                     @click="openRejectModal(lead)"
@@ -1176,6 +1173,11 @@ onBeforeUnmount(() => {
                       }"
                     ></span>
                     {{ rubro.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                    <button
+                      v-if="lead.estado === 'ACTIVO' && !lead.aprobaciones?.some(a => a.rubro === rubro) && !lead.rechazos?.some(r => r.rubro === rubro)"
+                      class="ml-0.5 text-emerald-600 hover:text-emerald-800 font-bold"
+                      @click="openApproveModal(lead, rubro)"
+                    >✓</button>
                   </span>
                 </template>
               </div>
@@ -1822,8 +1824,9 @@ onBeforeUnmount(() => {
     :user-role="auth.user?.rol || ''"
     :user-empresa-id="auth.tenantId || ''"
     :user-empresa-rubro="auth.empresa?.rubro || ''"
+    :initial-rubro="selectedRubroForAction || undefined"
     @submit="handleApproveLead"
-    @close="showApproveModal = false; selectedLeadForAction = null"
+    @close="showApproveModal = false; selectedLeadForAction = null; selectedRubroForAction = null"
   />
 
   <RejectLeadModal
