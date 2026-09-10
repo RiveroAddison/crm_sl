@@ -1134,12 +1134,12 @@ onBeforeUnmount(() => {
                     <option value="DESCARTADO">Descartado</option>
                   </select>
                   <button
-                    v-if="lead.estado === 'ACTIVO'"
+                    v-if="lead.estado === 'ACTIVO' && (lead.aprobaciones?.length || 0) + (lead.rechazos?.length || 0) < 6"
                     class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
                     @click="openApproveModal(lead)"
                   >✓ Aprobar</button>
                   <button
-                    v-if="lead.estado === 'ACTIVO'"
+                    v-if="lead.estado === 'ACTIVO' && (lead.rechazos?.length || 0) < 6"
                     class="bg-red-500 hover:bg-red-600 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition-colors"
                     @click="openRejectModal(lead)"
                   >✕ Rechazar</button>
