@@ -546,7 +546,7 @@ async function handleSwitchEmpresa(event: Event) {
   try {
     await auth.switchEmpresa(nuevaEmpresaId);
     await adminMaster.loadData();
-    await leads.load();
+    await leads.load(true);
     await prospects.load(true);
   } catch (err) {
     alert(err instanceof Error ? err.message : 'Error al cambiar de empresa');
